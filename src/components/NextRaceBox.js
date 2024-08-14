@@ -16,38 +16,18 @@ const NextRaceBox = () => {
   const [countdown, setCountdown] = useState(null);
   const mapRef = useRef(null);
 
-  
-
   const getWeatherData = async (latitude, longitude, dates) => {
     const apiKey = process.env.REACT_APP_WEATHER_API_KEY;
     const weatherData = [];
-    
 
     for (const date of dates) {
       // Formatar a data para o formato YYYY-MM-DD
       const formattedDate = date;
-      const instance = axios.create({
-        baseURL: `http://api.worldweatheronline.com/premium/v1/weather.ashx?q=${latitude},${longitude}&date=${formattedDate}&format=json&key=${apiKey}`,
-        headers: {
-          'Content-Type': 'application/json',
-          'Upgrade': 'h2c', // Example header for HTTP/2 upgrade
-        },
-      });
 
-      instance.interceptors.response.use(
-        response => response,
-        error => {
-          if (error.response && error.response.status === 426) {
-            // Handle the protocol upgrade requirement
-            console.error('Protocol upgrade required:', error.response);
-          }
-          return Promise.reject(error);
-        }
-      );
       try {
         // Obter os dados meteorológicos do dia
         const response = await axios.get(
-          `http://api.worldweatheronline.com/premium/v1/weather.ashx?q=${latitude},${longitude}&date=${formattedDate}&format=json&key=${apiKey}`
+          `https://api.worldweatheronline.com/premium/v1/weather.ashx?q=${latitude},${longitude}&date=${formattedDate}&format=json&key=${apiKey}`
         );
 
         // Obter os dados meteorológicos do dia
@@ -189,7 +169,7 @@ const NextRaceBox = () => {
 
       // Obter a próxima corrida
       axios
-        .get("http://ergast.com/api/f1/current/next.json")
+        .get("https://ergast.com/api/f1/current/next.json")
         .then((response) => {
           // Se houver uma próxima corrida já definida
           if (response.data.MRData.RaceTable.Races.length > 0) {
@@ -230,7 +210,7 @@ const NextRaceBox = () => {
               // Obter os vencedores de todas as corridas no circuito
               axios
                 .get(
-                  `http://ergast.com/api/f1/circuits/${circuitID}/results/1.json`
+                  `https://ergast.com/api/f1/circuits/${circuitID}/results/1.json`
                 )
                 .then((response) => {
                   // Guardar as corridas no estado
@@ -252,7 +232,7 @@ const NextRaceBox = () => {
             setNextRaceAvailability(false);
             // Obter o circuito da última corrida
             axios
-              .get("http://ergast.com/api/f1/current/last.json")
+              .get("https://ergast.com/api/f1/current/last.json")
               .then((response) => {
                 const circuitName =
                   response.data.MRData.RaceTable.Races[0].Circuit.circuitName;
@@ -288,7 +268,7 @@ const NextRaceBox = () => {
                   // Ao implementar a API de meteorologia, esta call da API foi aproveitada para guardar as datas das corridas anteriores no mesmo circuito
                   axios
                     .get(
-                      `http://ergast.com/api/f1/circuits/${circuitID}/results/1.json`
+                      `https://ergast.com/api/f1/circuits/${circuitID}/results/1.json`
                     )
                     .then((response) => {
                       // Guardar as corridas no estado

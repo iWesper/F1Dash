@@ -16,7 +16,7 @@ function Driver({ driverId }) {
 
         while (true) {
           const response = await axios.get(
-            `http://ergast.com/api/f1/drivers/${driverId}/results.json?limit=${limit}&offset=${offset}`
+            `https://ergast.com/api/f1/drivers/${driverId}/results.json?limit=${limit}&offset=${offset}`
           );
           races = races.concat(response.data.MRData.RaceTable.Races);
           if (response.data.MRData.total > races.length) {

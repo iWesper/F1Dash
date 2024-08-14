@@ -119,7 +119,7 @@ const StandingsBox = ({ setAlert }) => {
   // Ao carregar na página, faz um GET request à API e guarda os dados no array driverStandings
   useEffect(() => {
     axios
-      .get("http://ergast.com/api/f1/current/driverStandings.json")
+      .get("https://ergast.com/api/f1/current/driverStandings.json")
       .then((response) => {
         setDriverStandings(
           response.data.MRData.StandingsTable.StandingsLists[0].DriverStandings
