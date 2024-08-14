@@ -183,7 +183,6 @@ const NextRaceBox = () => {
             const circuit = geojsonData.features.find(
               (feature) => feature.properties.Name === circuitName
             );
-            console.log(circuitName);
             // Obter a data e hora da próxima corrida
             const raceDate = response.data.MRData.RaceTable.Races[0].date;
             const raceTime = response.data.MRData.RaceTable.Races[0].time;
