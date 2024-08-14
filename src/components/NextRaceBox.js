@@ -17,7 +17,7 @@ const NextRaceBox = () => {
   const mapRef = useRef(null);
 
   const getWeatherData = async (latitude, longitude, dates) => {
-    const apiKey = "2f546487e9d542a5bdf171538240808";
+    const apiKey = process.env.REACT_APP_WEATHER_API_KEY;
     const weatherData = [];
 
     for (const date of dates) {

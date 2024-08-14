@@ -3,11 +3,12 @@ import axios from "axios";
 
 const NewsBox = () => {
   const [news, setNews] = useState([]);
+  const apiKey = process.env.REACT_APP_NEWS_API_KEY;
 
   useEffect(() => {
     const fetchNews = async () => {
       const response = await axios.get(
-        "https://newsapi.org/v2/everything?q=F1&sortBy=relevancy&language=en&apiKey=59937ef7a57d4640888089fe80a46311"
+        `https://newsapi.org/v2/everything?q=F1&sortBy=relevancy&language=en&apiKey=${apiKey}`
       );
       setNews(response.data.articles);
     };

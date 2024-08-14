@@ -18,7 +18,7 @@ const VideosBox = () => {
               order: "date",
               type: "video",
               videoType: "any",
-              key: "AIzaSyCWZIm1CTw1hvMUVpdd8qUkIOYiME7p3Jc",
+              key: process.env.REACT_APP_YOUTUBE_API_KEY,
             },
           }
         );
