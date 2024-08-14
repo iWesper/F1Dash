@@ -16,14 +16,34 @@ const NextRaceBox = () => {
   const [countdown, setCountdown] = useState(null);
   const mapRef = useRef(null);
 
+  
+
   const getWeatherData = async (latitude, longitude, dates) => {
     const apiKey = process.env.REACT_APP_WEATHER_API_KEY;
     const weatherData = [];
+    
 
     for (const date of dates) {
       // Formatar a data para o formato YYYY-MM-DD
       const formattedDate = date;
+      const instance = axios.create({
+        baseURL: `http://api.worldweatheronline.com/premium/v1/weather.ashx?q=${latitude},${longitude}&date=${formattedDate}&format=json&key=${apiKey}`,
+        headers: {
+          'Content-Type': 'application/json',
+          'Upgrade': 'h2c', // Example header for HTTP/2 upgrade
+        },
+      });
 
+      instance.interceptors.response.use(
+        response => response,
+        error => {
+          if (error.response && error.response.status === 426) {
+            // Handle the protocol upgrade requirement
+            console.error('Protocol upgrade required:', error.response);
+          }
+          return Promise.reject(error);
+        }
+      );
       try {
         // Obter os dados meteorológicos do dia
         const response = await axios.get(
