@@ -318,8 +318,8 @@ const NextRaceBox = () => {
             <div className="fs-5 text-start d-flex flex-column text-white">
               <h2 className="text-white">📅 Date: {nextRace[1]} </h2>
               <h2 className="text-white">🕙 Time: {nextRace[2] ? nextRace[2] : "TBA"}</h2>
+              <h2 className="text-white mt-2">🏆 First race winner: {lastWinners.length > 0 ? `${lastWinners[0].Driver.givenName} ${lastWinners[0].Driver.familyName}` : "N/A"}</h2>
               <h2 className="text-white mt-5 text-center" style={{width: '20vw'}}>⏳ Countdown <div className="fs-2 text-center">{countdown}</div></h2>
-              <h2 className="text-white mt-5">First race winner: {lastWinners.length > 0 ? `${lastWinners[0].Driver.givenName} ${lastWinners[0].Driver.familyName}` : "N/A"}</h2>
             </div>
           )}
           <div
