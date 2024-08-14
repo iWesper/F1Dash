@@ -25,11 +25,9 @@ const NextRaceBox = () => {
       const formattedDate = date;
 
       try {
-                // Utilizar uma proxy para contornar o erro de CORS
-                const corsProxy = "https://corsproxy.io/?";
         // Obter os dados meteorológicos do dia
         const response = await axios.get(
-          `${corsProxy}http://api.worldweatheronline.com/premium/v1/weather.ashx?q=${latitude},${longitude}&date=${formattedDate}&format=json&key=${apiKey}`
+          `http://api.worldweatheronline.com/premium/v1/weather.ashx?q=${latitude},${longitude}&date=${formattedDate}&format=json&key=${apiKey}`
         );
 
         // Obter os dados meteorológicos do dia
