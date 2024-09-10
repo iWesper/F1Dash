@@ -17,14 +17,14 @@ const NewsBox = () => {
   }, []);
 
   return (
-    <div className="box max-vh-60 p-4 text-start">
+    <div className="box max-vh-60 p-4 mt-4 my-lg-0 text-start">
       <p className="text-white fs-2 mb-3 fw-bold text-start border-bottom">
         LATEST NEWS
       </p>
       <div className="news-container">
         {news.slice(0, 10).map((article, index) => (
           <div key={index} className="news-item max-vh-60v2 mt-4">
-            <a href={article.url} className="text-white py-2 border-bottom text-center">
+            <a href={article.url} className="text-white py-2 text-center">
               <img
                 src={article.urlToImage}
                 alt={article.title}

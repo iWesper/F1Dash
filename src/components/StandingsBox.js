@@ -126,8 +126,10 @@ const StandingsBox = ({ setAlert }) => {
 
   // Ao carregar na página, faz um GET request à API e guarda os dados no array driverStandings
   useEffect(() => {
+    // Utilizar uma proxy para contornar o erro de CORS
+    const corsProxy = "https://corsproxy.io/?";
     axios
-      .get("https://ergast.com/api/f1/current/driverStandings.json")
+      .get(`${corsProxy}https://ergast.com/api/f1/current/driverStandings.json`)
       .then((response) => {
         setApiIsDown(false);
         setDriverStandings(
@@ -150,10 +152,14 @@ const StandingsBox = ({ setAlert }) => {
         <p className="text-white fs-2 mb-3 fw-bold text-start border-bottom">
           STANDINGS
         </p>
-        <div className="d-flex flex-column h-100 align-items-center text-center justify-content-center">
-          <h1 className="text-white">Oops! The F1 Data API is currently unavailable.</h1>
-          <h2 className="text-white">Please try again later.</h2>
-        </div>
+        {apiIsDown && (
+          <div className="d-flex flex-column h-100 align-items-center text-center justify-content-center">
+            <h1 className="text-white">
+              Oops! The F1 Data API is currently unavailable.
+            </h1>
+            <h2 className="text-white">Please try again later.</h2>
+          </div>
+        )}
         {driverStandings && !apiIsDown ? (
           <table className="w-100">
             <thead>
@@ -170,7 +176,7 @@ const StandingsBox = ({ setAlert }) => {
                 <tr className="text-start" key={index}>
                   <td>{index + 1}</td>
                   <td className="text-white fw-bold">
-                    {driver.Driver.givenName} {driver.Driver.familyName}
+                    {driver.Driver.givenName.charAt(0)}. {driver.Driver.familyName}
                     {favoriteDrivers.includes(driver.Driver.driverId) ? (
                       <FaStar
                         className="ms-2"

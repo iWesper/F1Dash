@@ -1,5 +1,5 @@
 import React from "react";
-import { Row, Col } from 'reactstrap';
+import { Row, Col, Container } from 'reactstrap';
 import StandingsBox from "./StandingsBox";
 import NextRaceBox from "./NextRaceBox";
 import NewsBox from "./NewsBox";
@@ -7,26 +7,26 @@ import VideosBox from "./VideosBox";
 
 const Dashboard = ({setAlert}) => {
   return (
-    <div className="dashboard">
-      <Row className="m-0">
-        <Col>
+    <Container fluid className="dashboard">
+      <Row>
+        <Col xs="12">
           <NextRaceBox />
         </Col>
       </Row>
-      <Row className="m-0">
-        <Col md="8">
+      <Row>
+        <Col xs="12" md="8">
           <StandingsBox setAlert={setAlert}/>
         </Col>
-        <Col md="4">
+        <Col xs="12" md="4">
           <NewsBox />
         </Col>
       </Row>
-      <Row className="m-0">
+      <Row>
         <Col>
           <VideosBox />
         </Col>
       </Row>
-    </div>
+    </Container>
   );
 };
 

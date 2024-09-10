@@ -27,7 +27,7 @@ const HeaderNav = () => {
             F1 Dash
           </div>
         </Link>
-        <NavbarToggler onClick={toggle} />
+        <NavbarToggler onClick={toggle} className="custom-toggler" />
         <Collapse isOpen={isOpen} navbar>
           <Nav className="me-auto" navbar>
             <NavItem>

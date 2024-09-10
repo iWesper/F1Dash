@@ -20,21 +20,20 @@ tr:nth-child(even) {
 
 /* Estilos para as bento boxes */
 .max-vh-60 {
-  max-height: 60vh!important;
-  height: 60vh!important;
+  max-height: 60vh !important;
+  height: 60vh !important;
 }
 
 .max-vh-60v2 {
-  max-height: 60vh!important;
+  max-height: 60vh !important;
 }
 
 .max-vh-80 {
-  max-height: 80vh!important;
-  height: 80vh!important;
+  max-height: 80vh !important;
+  height: 80vh !important;
 }
 
 .box {
-  margin: 1rem; /* Adicionar margin no fundo */
   border-radius: 5px; /* Arredondar os cantos */
   box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1); /* Adicionar uma sombra */
   transition: box-shadow 0.5s ease-in-out, transform 0.2s ease-in-out; /* Transições */
@@ -51,17 +50,19 @@ tr:nth-child(even) {
 }
 
 .box-content {
-    overflow-y: auto;
-    flex: 1;
+  overflow-y: auto;
+  flex: 1;
 }
 
-.box th, .box h2 {
+.box th,
+.box h2 {
   margin: 0; /* Remover a margem */
   font-size: 1em; /* Ajustar o tamanho da fonte */
   color: #9e9e9e;
 }
 
-.box td, .box p {
+.box td,
+.box p {
   margin: 0; /* Remover a margem */
   font-size: 0.8em; /* Ajustar o tamanho da fonte */
   color: #959595; /* Ajustar a cor */
@@ -115,13 +116,13 @@ tr:nth-child(even) {
 }
 
 .video-container {
-  display: flex!important;
-  overflow-x: auto!important;
-  flex-direction: row!important;
+  display: flex !important;
+  overflow-x: auto !important;
+  flex-direction: row !important;
 }
 
 .video-item {
-  flex: 0 0 auto!important;
+  flex: 0 0 auto !important;
 }
 
 .video-title {
@@ -135,4 +136,17 @@ tr:nth-child(even) {
   background-color: rgba(17, 25, 40, 0.75);
   border-bottom: 1px solid rgba(255, 255, 255, 0.125);
   color: white;
+}
+
+.table-custom {
+  --bs-table-bg: transparent !important;
+}
+
+.custom-toggler:focus {
+  box-shadow: 0 0 0 0;
+  border-color: white; /* Change the border color to white */
+}
+
+.custom-toggler .navbar-toggler-icon {
+  background-image: url("data:image/svg+xml;charset=utf8,%3Csvg viewBox='0 0 30 30' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath stroke='rgba%28255, 255, 255, 1%29' stroke-width='2' stroke-linecap='round' stroke-miterlimit='10' d='M4 7h22M4 15h22M4 23h22'/%3E%3C/svg%3E");
 }

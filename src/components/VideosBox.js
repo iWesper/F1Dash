@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
+import { Container, Row, Col } from 'reactstrap';
 
 const VideosBox = () => {
   const [videos, setVideos] = useState([]);
@@ -32,7 +33,7 @@ const VideosBox = () => {
           return !hasEmoji && !hasShortsHashtag;
         });
 
-        setVideos(filterNoShortsVideos.slice(0, 5));
+        setVideos(filterNoShortsVideos.slice(0, 6));
       } catch (err) {
         setError("Failed to load videos. Please try again later.");
       }
@@ -42,39 +43,44 @@ const VideosBox = () => {
   }, []);
 
   return (
-    <div className="box p-4">
-      <p className="text-white fs-2 mb-2 fw-bold text-start border-bottom">
-        LATEST VIDEOS
-      </p>
-      <div className="video-container p-4">
+    <Container fluid className="box p-4 mb-4">
+      <Row className="align-items-start">
+        <Col>
+          <p className="text-white fs-2 mb-2 fw-bold text-start border-bottom">
+            LATEST VIDEOS
+          </p>
+        </Col>
+      </Row>
+      <Row>
         {error ? (
-          <p>{error}</p>
+          <Col>
+            <p>{error}</p>
+          </Col>
         ) : (
           videos.map((video) => (
-            <div
-              key={video.id.videoId}
-              className="border border-secondary border-top-0 border-bottom-0 border-start-0 px-2"
-            >
-              <a
-                href={`https://www.youtube.com/watch?v=${video.id.videoId}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="p-0"
-              >
-                <div className="video-item">
-                  <img
-                    src={video.snippet.thumbnails.default.url}
-                    alt={video.snippet.title}
-                    className="img-fluid"
-                  />
-                </div>
-                <p className="video-title pt-2">{video.snippet.title}</p>
-              </a>
-            </div>
+            <Col xs="12" sm="6" md="4" lg="2" key={video.id.videoId} className="mb-4">
+              <div className="px-2">
+                <a
+                  target="_blank"
+                  href={`https://www.youtube.com/watch?v=${video.id.videoId}`}
+                  rel="noopener noreferrer"
+                  className="p-0"
+                >
+                  <div className="video-item">
+                    <img
+                      src={video.snippet.thumbnails.default.url}
+                      alt={video.snippet.title}
+                      className="img-fluid"
+                    />
+                  </div>
+                  <p className="video-title pt-2">{video.snippet.title}</p>
+                </a>
+              </div>
+            </Col>
           ))
         )}
-      </div>
-    </div>
+      </Row>
+    </Container>
   );
 };
 
