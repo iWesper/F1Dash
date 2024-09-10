@@ -6,9 +6,11 @@ const NewsBox = () => {
   const apiKey = process.env.REACT_APP_NEWS_API_KEY;
 
   useEffect(() => {
+        // Utilizar uma proxy para contornar o erro de CORS
+        const corsProxy = "https://corsproxy.io/?";
     const fetchNews = async () => {
       const response = await axios.get(
-        `https://newsapi.org/v2/everything?q=F1&sortBy=relevancy&language=en&apiKey=${apiKey}`
+        `${corsProxy}https://newsapi.org/v2/everything?q=F1&sortBy=relevancy&language=en&apiKey=${apiKey}`
       );
       setNews(response.data.articles);
     };
