@@ -3,16 +3,19 @@ import axios from "axios";
 
 const NewsBox = () => {
   const [news, setNews] = useState([]);
+  const [error, setError] = useState(null);
   const apiKey = process.env.REACT_APP_NEWS_API_KEY;
 
   useEffect(() => {
-        // Utilizar uma proxy para contornar o erro de CORS
-        const corsProxy = "https://corsproxy.io/?";
     const fetchNews = async () => {
-      const response = await axios.get(
-        `${corsProxy}https://newsapi.org/v2/everything?q=F1&sortBy=relevancy&language=en&apiKey=${apiKey}`
-      );
-      setNews(response.data.articles);
+      try {
+        const response = await axios.get(
+          `https://newsapi.org/v2/everything?q=F1&sortBy=relevancy&language=en&apiKey=${apiKey}`
+        );
+        setNews(response.data.articles);
+      } catch (err) {
+        setError("Failed to load news. This may be due to News API's policies restricting access outside localhost.");
+      }
     };
 
     fetchNews();
@@ -24,23 +27,29 @@ const NewsBox = () => {
         LATEST NEWS
       </p>
       <div className="news-container">
-        {news.slice(0, 10).map((article, index) => (
-          <div key={index} className="news-item max-vh-60v2 mt-4">
-            <a href={article.url} className="text-white py-2 text-center">
-              <img
-                src={article.urlToImage}
-                alt={article.title}
-                className="img-fluid h-50"
-              />
-              <div>
-                <h2 className="fw-bold fs-5 text-white py-1">
-                  {article.title}
-                </h2>
-                <p>{article.description}</p>
-              </div>
-            </a>
+        {error ? (
+          <div className="text-white">
+            <p>{error}</p>
           </div>
-        ))}
+        ) : (
+          news.slice(0, 10).map((article, index) => (
+            <div key={index} className="news-item max-vh-60v2 mt-4">
+              <a href={article.url} className="text-white py-2 text-center">
+                <img
+                  src={article.urlToImage}
+                  alt={article.title}
+                  className="img-fluid h-50"
+                />
+                <div>
+                  <h2 className="fw-bold fs-5 text-white py-1">
+                    {article.title}
+                  </h2>
+                  <p>{article.description}</p>
+                </div>
+              </a>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );
