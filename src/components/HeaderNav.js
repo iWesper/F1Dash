@@ -12,6 +12,7 @@ import {
   DropdownItem,
 } from "reactstrap";
 import { useAuth } from "./AuthProvider";
+import { FaExclamationCircle } from "react-icons/fa";
 
 const HeaderNav = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -20,7 +21,7 @@ const HeaderNav = () => {
   const toggle = () => setIsOpen(!isOpen);
   return (
     <div className="px-4">
-      <Navbar id="navBar" expand="md" className="rounded-bottom">
+      <Navbar expand="md" className="rounded-bottom navBar">
         <Link to="/" className="remove-link-styles">
           <div className="ms-3 text-white navbar-brand">
             F1 Dash
@@ -53,6 +54,7 @@ const HeaderNav = () => {
           )}
         </Collapse>
       </Navbar>
+      <p className="p-2 rounded-bottom navBar"><FaExclamationCircle size={24} color="#FF6347" />  This app relies on external APIs, and I have no control over their availability. They may be down for reasons beyond my control.</p>
     </div>
   );
 };

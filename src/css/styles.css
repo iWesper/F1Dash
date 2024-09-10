@@ -129,7 +129,7 @@ tr:nth-child(even) {
   text-overflow: clip;
 }
 
-#navBar {
+.navBar {
   backdrop-filter: blur(16px) saturate(180%);
   -webkit-backdrop-filter: blur(16px) saturate(180%);
   background-color: rgba(17, 25, 40, 0.75);

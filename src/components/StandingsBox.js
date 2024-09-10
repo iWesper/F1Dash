@@ -14,6 +14,7 @@ const StandingsBox = ({ setAlert }) => {
   // Variável driverStandings que guarda o array de dados da API
   const [driverStandings, setDriverStandings] = useState([]);
   const [favoriteDrivers, setFavoriteDrivers] = useState([]);
+  const [apiIsDown, setApiIsDown] = useState(true);
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -51,7 +52,7 @@ const StandingsBox = ({ setAlert }) => {
     Austrian: "AUT",
     Uruguayan: "URY",
     Rhodesian: "ZWE",
-    Liechtensteiner: "LIE"
+    Liechtensteiner: "LIE",
   };
 
   // Adicionar um driver aos favoritos
@@ -71,7 +72,8 @@ const StandingsBox = ({ setAlert }) => {
         .catch((error) => {
           setAlert({
             visible: true,
-            message: "There was an error!",
+            message:
+              "An error occurred while adding your favorite driver! Please try again later.",
             color: "danger",
           });
         });
@@ -98,7 +100,8 @@ const StandingsBox = ({ setAlert }) => {
         .catch((error) => {
           setAlert({
             visible: true,
-            message: "There was an error!",
+            message:
+              "An error occurred while removing your favorite driver! Please try again later.",
             color: "danger",
           });
         });
@@ -112,7 +115,12 @@ const StandingsBox = ({ setAlert }) => {
         .then((drivers) => {
           setFavoriteDrivers(drivers);
         })
-        .catch((error) => console.log("There was an error!", error));
+        .catch((error) =>
+          window.alert(
+            "An error occurred while fetching your favorite drivers! Please try again later.",
+            error
+          )
+        );
     }
   }, [user]);
 
@@ -121,12 +129,17 @@ const StandingsBox = ({ setAlert }) => {
     axios
       .get("https://ergast.com/api/f1/current/driverStandings.json")
       .then((response) => {
+        setApiIsDown(false);
         setDriverStandings(
           response.data.MRData.StandingsTable.StandingsLists[0].DriverStandings
         );
       })
       .catch((error) => {
-        console.log("There was an error!", error);
+        setApiIsDown(true);
+        window.alert(
+          "At the moment, the F1 Data API used isn't available. Please, try again later.",
+          error
+        );
       });
   }, []);
 
@@ -137,7 +150,11 @@ const StandingsBox = ({ setAlert }) => {
         <p className="text-white fs-2 mb-3 fw-bold text-start border-bottom">
           STANDINGS
         </p>
-        {driverStandings ? (
+        <div className="d-flex flex-column h-100 align-items-center text-center justify-content-center">
+          <h1 className="text-white">Oops! The F1 Data API is currently unavailable.</h1>
+          <h2 className="text-white">Please try again later.</h2>
+        </div>
+        {driverStandings && !apiIsDown ? (
           <table className="w-100">
             <thead>
               <tr className="text-start">
@@ -183,9 +200,9 @@ const StandingsBox = ({ setAlert }) => {
               ))}
             </tbody>
           </table>
-        ) : (
-          <div>Loading...</div>
-        )}
+        ) : !apiIsDown ? (
+          <div className="text-white">Loading...</div>
+        ) : null}
         {/* </Link> */}
       </div>
     </div>
