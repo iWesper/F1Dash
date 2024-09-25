@@ -10,9 +10,9 @@ const NewsBox = () => {
     const fetchNews = async () => {
       try {
         const response = await axios.get(
-          `https://newsapi.org/v2/everything?q=F1&sortBy=relevancy&language=en&apiKey=${apiKey}`
+          `https://api.webz.io/newsApiLite?token=${apiKey}&q=Formula%201`
         );
-        setNews(response.data.articles);
+        setNews(response.data.posts);
       } catch (err) {
         setError("Failed to load news. This may be due to News API's policies restricting access outside localhost.");
       }
@@ -32,19 +32,18 @@ const NewsBox = () => {
             <p>{error}</p>
           </div>
         ) : (
-          news.slice(0, 10).map((article, index) => (
+          news.slice(0, 10).map((post, index) => (
             <div key={index} className="news-item max-vh-60v2 mt-4">
-              <a href={article.url} className="text-white py-2 text-center">
+              <a href={post.url} className="text-white py-2 text-center">
                 <img
-                  src={article.urlToImage}
-                  alt={article.title}
-                  className="img-fluid h-50"
+                  src={post.thread.main_image}
+                  alt={post.title}
+                  className="img-fluid"
                 />
                 <div>
                   <h2 className="fw-bold fs-5 text-white py-1">
-                    {article.title}
+                    {post.title}
                   </h2>
-                  <p>{article.description}</p>
                 </div>
               </a>
             </div>

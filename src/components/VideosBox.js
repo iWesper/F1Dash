@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { Container, Row, Col } from 'reactstrap';
+import he from "he";
 
 const VideosBox = () => {
   const [videos, setVideos] = useState([]);
@@ -73,7 +74,7 @@ const VideosBox = () => {
                       className="img-fluid"
                     />
                   </div>
-                  <p className="video-title pt-2">{video.snippet.title}</p>
+                  <p className="video-title pt-2">{he.decode(video.snippet.title)}</p>
                 </a>
               </div>
             </Col>

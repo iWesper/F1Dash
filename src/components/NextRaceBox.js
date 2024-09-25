@@ -3,7 +3,7 @@ import axios from "axios";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import geojsonFile from "../extra/f1-circuits.geojson";
-import { Container, Row, Col, Table } from 'reactstrap';
+import { Container, Row, Col, Table } from "reactstrap";
 
 const NextRaceBox = () => {
   const [geojsonData, setGeojsonData] = useState(null);
@@ -26,16 +26,16 @@ const NextRaceBox = () => {
     const apiKey = process.env.REACT_APP_WEATHER_API_KEY;
     const nextRaceWeatherData = [];
     const previousRaceWeatherData = [];
-
+  
+    // Fetch next race weather data
     try {
-      // Fetch next race weather data
       const nextRaceResponse = await axios.get(
         `https://api.worldweatheronline.com/premium/v1/weather.ashx?q=${latitude},${longitude}&date=${nextRaceDate}&format=json&key=${apiKey}`
       );
-
+  
       const nextRaceDailyWeather = nextRaceResponse.data.data.weather[0];
       const nextRaceHourlyWeather = nextRaceDailyWeather.hourly;
-
+  
       const nextRaceAvgTemperature =
         nextRaceHourlyWeather.reduce(
           (sum, data) => sum + Number(data.tempC),
@@ -56,7 +56,7 @@ const NextRaceBox = () => {
           (sum, data) => sum + Number(data.windspeedKmph),
           0
         ) / nextRaceHourlyWeather.length;
-
+  
       nextRaceWeatherData.push({
         date: nextRaceDailyWeather.date,
         temperature: nextRaceAvgTemperature,
@@ -64,17 +64,23 @@ const NextRaceBox = () => {
         precipitationIntensity: nextRaceAvgPrecipitation,
         windSpeed: nextRaceAvgWindSpeed,
       });
-
-      // Fetch previous races weather data
+  
+      setNextRaceWeatherData(nextRaceWeatherData);
+    } catch (error) {
+      console.error("Error fetching next race weather data", error);
+    }
+  
+    // Fetch previous races weather data
+    try {
       for (const date of previousRaceDates) {
         const previousRaceResponse = await axios.get(
           `https://api.worldweatheronline.com/premium/v1/past-weather.ashx?q=${latitude},${longitude}&date=${date}&format=json&key=${apiKey}`
         );
-
+  
         const previousRaceDailyWeather =
           previousRaceResponse.data.data.weather[0];
         const previousRaceHourlyWeather = previousRaceDailyWeather.hourly;
-
+  
         const previousRaceAvgTemperature =
           previousRaceHourlyWeather.reduce(
             (sum, data) => sum + Number(data.tempC),
@@ -95,7 +101,7 @@ const NextRaceBox = () => {
             (sum, data) => sum + Number(data.windspeedKmph),
             0
           ) / previousRaceHourlyWeather.length;
-
+  
         previousRaceWeatherData.push({
           date: previousRaceDailyWeather.date,
           temperature: previousRaceAvgTemperature,
@@ -104,13 +110,13 @@ const NextRaceBox = () => {
           windSpeed: previousRaceAvgWindSpeed,
         });
       }
-
-      setNextRaceWeatherData(nextRaceWeatherData);
+  
       setPreviousRaceWeatherData(previousRaceWeatherData);
+      console.log(previousRaceWeatherData);
     } catch (error) {
-      console.error("Error fetching weather data", error);
+      console.error("Error fetching previous races weather data", error);
     }
-
+  
     return { nextRaceWeatherData, previousRaceWeatherData };
   };
 
@@ -205,7 +211,7 @@ const NextRaceBox = () => {
       )
         .then(({ nextRaceWeatherData, previousRaceWeatherData }) => {
           // Se houver dados meteorológicos
-          if (nextRaceWeatherData.length > 0) {
+          if (nextRaceWeatherData.length > 0 || previousRaceWeatherData.length > 0) {
             setNextRaceWeatherData(nextRaceWeatherData[0]);
             setPreviousRaceWeatherData(previousRaceWeatherData);
           } else {
@@ -369,131 +375,239 @@ const NextRaceBox = () => {
 
   return (
     <Container fluid className="box m-0 p-4">
-    <Row className="nextrace-container">
-      <Col xs="12">
-        {nextRaceAvailability ? (
-          // Se houver uma próxima corrida definida
-          <div className="d-flex flex-row justify-content-between border-bottom mb-3">
-            <p className="d-flex text-white fs-2 fw-bold text-start">
-              NEXT RACE
+      <Row className="nextrace-container">
+        <Col xs="12">
+          {nextRaceAvailability ? (
+            // Se houver uma próxima corrida definida
+            <div className="d-flex flex-row justify-content-between border-bottom mb-3">
+              <p className="d-flex text-white fs-2 fw-bold text-start">
+                NEXT RACE
+              </p>
+              {nextCircuit && (
+                <div className="d-flex text-white text-end fs-2">
+                  {new Date(nextCircuit[1]).getFullYear()} {nextCircuit[0]}{" "}
+                  Grand Prix
+                </div>
+              )}
+            </div>
+          ) : (
+            // Se não houver uma próxima corrida definida (off season)
+            <p className="text-white fs-2 mb-3 fw-bold text-start border-bottom">
+              OFF SEASON - CHECK OUT THE LAST RACE
             </p>
-            {nextCircuit && (
-              <div className="d-flex text-white text-end fs-2">
-                {new Date(nextCircuit[1]).getFullYear()} {nextCircuit[0]} Grand
-                Prix
+          )}
+        </Col>
+      </Row>
+      <Row className="d-flex flex-row ps-0 ms-0 justify-content-between align-middle mt-2 w-100">
+        <Col
+          xs="12"
+          md="6"
+          lg="2"
+          className="fs-5 text-start d-flex flex-column text-white"
+        >
+          {nextCircuit && (
+            <Row>
+              <Col
+                xs="12"
+                className="text-center mb-1 d-flex align-items-center justify-content-center"
+              >
+                <div className="text-white fs-4">📅 Date: {nextCircuit[1]}</div>
+              </Col>
+              <Col
+                xs="12"
+                className="text-center mb-1 d-flex align-items-center justify-content-center"
+              >
+                <div className="text-white fs-4">
+                  🕙 Time: {nextCircuit[2] ? nextCircuit[2] : "TBA"}
+                </div>
+              </Col>
+              <Col
+                xs="12"
+                className="mb-1 d-flex align-items-center justify-content-center"
+              >
+                <div className="text-white mt-4 text-center w-100 fs-4">
+                  ⏳ Countdown{" "}
+                  <div className="fs-2 text-center">{countdown}</div>
+                </div>
+              </Col>
+            </Row>
+          )}
+        </Col>
+        <Col
+          xs="12"
+          md="6"
+          lg="4"
+          className="d-flex flex-column align-items-center"
+        >
+          <div
+            id="map"
+            className="w-100 rounded d-flex px-2 my-auto"
+            style={{ height: "20rem", maxHeight: "20rem", maxWidth: "100%" }}
+          ></div>
+        </Col>
+        <Col xs="12" md="6" className="d-flex flex-column align-items-center">
+          {nextRaceWeatherData ? (
+            <div className="mb-3 w-100">
+              <div className="table-responsive">
+                <Table className="table-sm table-custom table-striped table-borderless caption-top">
+                  <caption className="text-white text-lg-center fs-4">
+                    {" "}
+                    Weather Forecast{" "}
+                  </caption>
+                  <thead>
+                    <tr className="fs-5">
+                      <th scope="col" className="px-1">
+                        <div className="d-flex flex-column align-items-center p-4">
+                          <span style={{ fontSize: "1em" }}>🏆</span>
+                          <span>Winner</span>
+                        </div>
+                      </th>
+                      <th scope="col" className="px-1">
+                        <div className="d-flex flex-column align-items-center p-4">
+                          <span style={{ fontSize: "1em" }}>📅</span>
+                          <span>Date</span>
+                        </div>
+                      </th>
+                      <th scope="col" className="px-1">
+                        <div className="d-flex flex-column align-items-center p-4">
+                          <span style={{ fontSize: "1em" }}>🌡️</span>
+                          <span>Temperature</span>
+                        </div>
+                      </th>
+                      <th scope="col" className="px-1">
+                        <div className="d-flex flex-column align-items-center p-4">
+                          <span style={{ fontSize: "1em" }}>💨</span>
+                          <span>Wind</span>
+                        </div>
+                      </th>
+                      <th scope="col" className="px-1">
+                        <div className="d-flex flex-column align-items-center p-4">
+                          <span style={{ fontSize: "1em" }}>📊</span>
+                          <span>Pressure</span>
+                        </div>
+                      </th>
+                      <th scope="col" className="px-1">
+                        <div className="d-flex flex-column align-items-center p-4">
+                          <span style={{ fontSize: "1em" }}>💧</span>
+                          <span>Precipitation</span>
+                        </div>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="fs-4">
+                      <td className="text-white px-1"> - </td>
+                      <td className="text-white px-1"> Next race </td>
+                      <td className="text-white px-1">
+                        {nextRaceWeatherData.temperature.toFixed(1)} ºC
+                      </td>
+                      <td className="text-white px-1">
+                        {nextRaceWeatherData.windSpeed.toFixed(1)} m/s
+                      </td>
+                      <td className="text-white px-1">
+                        {(nextRaceWeatherData.pressure / 100).toFixed(2)} hPa
+                      </td>
+                      <td className="text-white px-1">
+                        {nextRaceWeatherData.precipitationIntensity === 0
+                          ? "None"
+                          : nextRaceWeatherData.precipitationIntensity < 0.05
+                          ? "Very Low"
+                          : nextRaceWeatherData.precipitationIntensity < 0.1
+                          ? "Low"
+                          : nextRaceWeatherData.precipitationIntensity < 0.4
+                          ? "Medium"
+                          : "High"}
+                      </td>
+                    </tr>
+                    {previousRaceWeatherData &&
+                      previousRaceWeatherData
+                        .sort((a, b) => new Date(b.date) - new Date(a.date)) // Sort by date in descending order
+                        .map((data, index) => {
+                          // Transformar a data em ano
+                          const year = new Date(data.date).getFullYear();
+                          // Obter o vencedor da corrida desse ano
+                          const winner = lastWinners.find(
+                            (winner) => winner.season === String(year)
+                          );
+                          // Obter o nome do vencedor da corrida desse ano
+                          const winnerName = winner
+                            ? `${winner.Driver.givenName.charAt(0)}. ${
+                                winner.Driver.familyName
+                              }`
+                            : "N/A";
+
+                          // Formatar os dados para serem apresentados (obrigado AI)
+                          // Formatar a temperatura para celsius
+                          const temperature = `${data.temperature.toFixed(
+                            1
+                          )} ºC`;
+                          // Formatar a velocidade do vento para m/s
+                          const windSpeed = `${data.windSpeed.toFixed(1)} m/s`;
+                          // Formatar a intensidade da precipitação para Low, Medium ou High
+                          const precipitationIntensity =
+                            data.precipitationIntensity === 0
+                              ? "None"
+                              : data.precipitationIntensity < 0.05
+                              ? "Very Low"
+                              : data.precipitationIntensity < 0.1
+                              ? "Low"
+                              : data.precipitationIntensity < 0.4
+                              ? "Medium"
+                              : "High";
+                          // Formatar a pressão para hPa
+                          const pressure = `${(data.pressure / 100).toFixed(
+                            2
+                          )} hPa`;
+
+                          return (
+                            <tr key={index} className="fs-4">
+                              <td className="text-white px-1">{winnerName}</td>
+                              <td className="text-white px-1">{year}</td>
+                              <td className="text-white px-1">{temperature}</td>
+                              <td className="text-white px-1">{pressure}</td>
+                              <td className="text-white px-1">
+                                {precipitationIntensity}
+                              </td>
+                              <td className="text-white px-1">{windSpeed}</td>
+                            </tr>
+                          );
+                        })}
+                  </tbody>
+                </Table>
               </div>
-            )}
-          </div>
-        ) : (
-          // Se não houver uma próxima corrida definida (off season)
-          <p className="text-white fs-2 mb-3 fw-bold text-start border-bottom">
-            OFF SEASON - CHECK OUT THE LAST RACE
-          </p>
-        )}
-      </Col>
-    </Row>
-    <Row className="d-flex flex-row ps-0 ms-0 justify-content-between align-middle mt-2 w-100">
-      <Col xs="12" md="6" lg="2" className="fs-5 text-start d-flex flex-column text-white">
-        {nextCircuit && (
-          <Row>
-            <Col xs="12" className="text-center mb-1 d-flex align-items-center justify-content-center">
-              <div className="text-white fs-4">📅 Date: {nextCircuit[1]}</div>
-            </Col>
-            <Col xs="12" className="text-center mb-1 d-flex align-items-center justify-content-center">
-              <div className="text-white fs-4">
-                🕙 Time: {nextCircuit[2] ? nextCircuit[2] : "TBA"}
-              </div>
-            </Col>
-            <Col xs="12" className="mb-1 d-flex align-items-center justify-content-center">
-              <div className="text-white mt-4 text-center w-100 fs-4">
-                ⏳ Countdown <div className="fs-2 text-center">{countdown}</div>
-              </div>
-            </Col>
-          </Row>
-        )}
-      </Col>
-      <Col xs="12" md="6" lg="4" className="d-flex flex-column align-items-center">
-        <div
-          id="map"
-          className="w-100 rounded d-flex px-2 my-auto"
-          style={{ height: "20rem", maxHeight: "20rem", maxWidth: "100%" }}
-        ></div>
-      </Col>
-      <Col xs="12" md="6" className="d-flex flex-column align-items-center">
-        {nextRaceWeatherData ? (
-          <div className="mb-3 w-100">
-            <div className="table-responsive">
-            <Table className="table-sm table-custom table-striped table-borderless caption-top">
-              <caption className="text-white text-lg-center fs-4"> Weather Forecast </caption>
-              <thead>
-                <tr className="fs-5">
-                  <th scope="col" className="px-1">
-                    <div className="d-flex flex-column align-items-center p-4">
-                      <span style={{ fontSize: "1em" }}>🏆</span>
-                      <span>Winner</span>
-                    </div>
-                  </th>
-                  <th scope="col" className="px-1">
-                    <div className="d-flex flex-column align-items-center p-4">
-                      <span style={{ fontSize: "1em" }}>📅</span>
-                      <span>Date</span>
-                    </div>
-                  </th>
-                  <th scope="col" className="px-1">
-                    <div className="d-flex flex-column align-items-center p-4">
-                      <span style={{ fontSize: "1em" }}>🌡️</span>
-                      <span>Temperature</span>
-                    </div>
-                  </th>
-                  <th scope="col" className="px-1">
-                    <div className="d-flex flex-column align-items-center p-4">
-                      <span style={{ fontSize: "1em" }}>💨</span>
-                      <span>Wind</span>
-                    </div>
-                  </th>
-                  <th scope="col" className="px-1">
-                    <div className="d-flex flex-column align-items-center p-4">
-                      <span style={{ fontSize: "1em" }}>📊</span>
-                      <span>Pressure</span>
-                    </div>
-                  </th>
-                  <th scope="col" className="px-1">
-                    <div className="d-flex flex-column align-items-center p-4">
-                      <span style={{ fontSize: "1em" }}>💧</span>
-                      <span>Precipitation</span>
-                    </div>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr className="fs-4">
-                  <td className="text-white px-1"> - </td>
-                  <td className="text-white px-1"> Next race </td>
-                  <td className="text-white px-1">
-                    {nextRaceWeatherData.temperature.toFixed(1)} ºC
-                  </td>
-                  <td className="text-white px-1">
-                    {nextRaceWeatherData.windSpeed.toFixed(1)} m/s
-                  </td>
-                  <td className="text-white px-1">
-                    {(nextRaceWeatherData.pressure / 100).toFixed(2)} hPa
-                  </td>
-                  <td className="text-white px-1">
-                    {nextRaceWeatherData.precipitationIntensity === 0
-                      ? "None"
-                      : nextRaceWeatherData.precipitationIntensity < 0.05
-                      ? "Very Low"
-                      : nextRaceWeatherData.precipitationIntensity < 0.1
-                      ? "Low"
-                      : nextRaceWeatherData.precipitationIntensity < 0.4
-                      ? "Medium"
-                      : "High"}
-                  </td>
-                </tr>
-                {previousRaceWeatherData &&
-                  previousRaceWeatherData
-                    .sort((a, b) => new Date(b.date) - new Date(a.date)) // Sort by date in descending order
-                    .map((data, index) => {
+            </div>
+          ) : (
+            <div className="mb-3 w-100">
+              <p className="text-danger">
+                Sorry! Next race's weather forecast isn't available. Take a look
+                at the weather from the last 5 races:
+              </p>
+              <Table className="table-sm table-custom table-striped table-borderless">
+                <thead>
+                  <tr className="fs-5">
+                    <th scope="col" className="px-1">
+                      Year
+                    </th>
+                    <th scope="col" className="px-1">
+                      🏆 Winner
+                    </th>
+                    <th scope="col" className="px-1">
+                      🌡️ Temperature
+                    </th>
+                    <th scope="col" className="px-1">
+                      📊 Pressure
+                    </th>
+                    <th scope="col" className="px-1">
+                      💧 Precipitation Intensity
+                    </th>
+                    <th scope="col" className="px-1">
+                      💨 Wind Speed
+                    </th>
+                  </tr>
+                </thead>
+                {previousRaceWeatherData ? (
+                  <tbody>
+                    {previousRaceWeatherData.map((data, index) => {
                       // Transformar a data em ano
                       const year = new Date(data.date).getFullYear();
                       // Obter o vencedor da corrida desse ano
@@ -502,9 +616,9 @@ const NextRaceBox = () => {
                       );
                       // Obter o nome do vencedor da corrida desse ano
                       const winnerName = winner
-                        ? `${winner.Driver.givenName.charAt(0)}. ${winner.Driver.familyName}`
+                        ? `${winner.Driver.givenName} ${winner.Driver.familyName}`
                         : "N/A";
-                
+
                       // Formatar os dados para serem apresentados (obrigado AI)
                       // Formatar a temperatura para celsius
                       const temperature = `${data.temperature.toFixed(1)} ºC`;
@@ -522,112 +636,37 @@ const NextRaceBox = () => {
                           ? "Medium"
                           : "High";
                       // Formatar a pressão para hPa
-                      const pressure = `${(data.pressure / 100).toFixed(2)} hPa`;
-                
+                      const pressure = `${(data.pressure / 100).toFixed(
+                        2
+                      )} hPa`;
+
                       return (
                         <tr key={index} className="fs-4">
-                          <td className="text-white px-1">{winnerName}</td>
                           <td className="text-white px-1">{year}</td>
+                          <td className="text-white px-1">{winnerName}</td>
                           <td className="text-white px-1">{temperature}</td>
                           <td className="text-white px-1">{pressure}</td>
-                          <td className="text-white px-1">{precipitationIntensity}</td>
+                          <td className="text-white px-1">
+                            {precipitationIntensity}
+                          </td>
                           <td className="text-white px-1">{windSpeed}</td>
                         </tr>
                       );
                     })}
-              </tbody>
-            </Table>
+                  </tbody>
+                ) : (
+                  <tbody>
+                    <tr>
+                      <td>Loading...</td>
+                    </tr>
+                  </tbody>
+                )}
+              </Table>
             </div>
-          </div>
-        ) : (
-          <div className="mb-3 w-100">
-            <p className="text-danger">
-              Sorry! Next race's weather forecast isn't available. Take a
-              look at the weather from the last 5 races:
-            </p>
-            <Table className="table-sm table-custom table-striped table-borderless">
-              <thead>
-                <tr className="fs-5">
-                  <th scope="col" className="px-1">
-                    Year
-                  </th>
-                  <th scope="col" className="px-1">
-                    🏆 Winner
-                  </th>
-                  <th scope="col" className="px-1">
-                    🌡️ Temperature
-                  </th>
-                  <th scope="col" className="px-1">
-                    📊 Pressure
-                  </th>
-                  <th scope="col" className="px-1">
-                    💧 Precipitation Intensity
-                  </th>
-                  <th scope="col" className="px-1">
-                    💨 Wind Speed
-                  </th>
-                </tr>
-              </thead>
-              {previousRaceWeatherData ? (
-                <tbody>
-                  {previousRaceWeatherData.map((data, index) => {
-                    // Transformar a data em ano
-                    const year = new Date(data.date).getFullYear();
-                    // Obter o vencedor da corrida desse ano
-                    const winner = lastWinners.find(
-                      (winner) => winner.season === String(year)
-                    );
-                    // Obter o nome do vencedor da corrida desse ano
-                    const winnerName = winner
-                      ? `${winner.Driver.givenName} ${winner.Driver.familyName}`
-                      : "N/A";
-
-                    // Formatar os dados para serem apresentados (obrigado AI)
-                    // Formatar a temperatura para celsius
-                    const temperature = `${data.temperature.toFixed(1)} ºC`;
-                    // Formatar a velocidade do vento para m/s
-                    const windSpeed = `${data.windSpeed.toFixed(1)} m/s`;
-                    // Formatar a intensidade da precipitação para Low, Medium ou High
-                    const precipitationIntensity =
-                      data.precipitationIntensity === 0
-                        ? "None"
-                        : data.precipitationIntensity < 0.05
-                        ? "Very Low"
-                        : data.precipitationIntensity < 0.1
-                        ? "Low"
-                        : data.precipitationIntensity < 0.4
-                        ? "Medium"
-                        : "High";
-                    // Formatar a pressão para hPa
-                    const pressure = `${(data.pressure / 100).toFixed(2)} hPa`;
-
-                    return (
-                      <tr key={index} className="fs-4">
-                        <td className="text-white px-1">{year}</td>
-                        <td className="text-white px-1">{winnerName}</td>
-                        <td className="text-white px-1">{temperature}</td>
-                        <td className="text-white px-1">{pressure}</td>
-                        <td className="text-white px-1">
-                          {precipitationIntensity}
-                        </td>
-                        <td className="text-white px-1">{windSpeed}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              ) : (
-                <tbody>
-                  <tr>
-                    <td>Loading...</td>
-                  </tr>
-                </tbody>
-              )}
-            </Table>
-          </div>
-        )}
-      </Col>
-    </Row>
-  </Container>
+          )}
+        </Col>
+      </Row>
+    </Container>
   );
 };
 
