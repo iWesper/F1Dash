@@ -22,7 +22,7 @@ const NewsBox = () => {
   }, []);
 
   return (
-    <div className="box max-vh-60 p-4 mt-4 my-lg-0 text-start">
+    <div className="box max-vh-80 p-4 mt-4 my-lg-0 text-start">
       <p className="text-white fs-2 mb-3 fw-bold text-start border-bottom">
         LATEST NEWS
       </p>

@@ -53,6 +53,12 @@ const StandingsBox = ({ setAlert }) => {
     Uruguayan: "URY",
     Rhodesian: "ZWE",
     Liechtensteiner: "LIE",
+    Swiss: "CHE",
+    SouthAfrican: "ZAF",
+    Hungarian: "HUN",
+    EastGerman: "DEU",
+    Rhodesian: "ZWE",
+    Argentinian: "ARG",
   };
 
   // Adicionar um driver aos favoritos
@@ -72,10 +78,10 @@ const StandingsBox = ({ setAlert }) => {
         .catch((error) => {
           setAlert({
             visible: true,
-            message:
-              "An error occurred while adding your favorite driver! Please try again later.",
+            message: `An error occurred while adding your favorite driver! Please try again later.`,
             color: "danger",
           });
+          console.error(error);
         });
     } else {
       // Redirecionar o utilizador para a página de login
@@ -146,7 +152,7 @@ const StandingsBox = ({ setAlert }) => {
   }, []);
 
   return (
-    <div className="box max-vh-60">
+    <div className="box max-vh-80">
       <div className="standings-container p-4">
         {/* <Link to="/standings"> */}
         <p className="text-white fs-2 mb-3 fw-bold text-start border-bottom">
@@ -164,6 +170,7 @@ const StandingsBox = ({ setAlert }) => {
           <table className="w-100">
             <thead>
               <tr className="text-start">
+                <th>FAV</th>
                 <th>POS</th>
                 <th>DRIVER</th>
                 <th>NATIONALITY</th>
@@ -174,22 +181,25 @@ const StandingsBox = ({ setAlert }) => {
             <tbody className="fs-5">
               {driverStandings.map((driver, index) => (
                 <tr className="text-start" key={index}>
-                  <td>{index + 1}</td>
-                  <td className="text-white fw-bold">
-                    {driver.Driver.givenName.charAt(0)}. {driver.Driver.familyName}
+                  <td>
                     {favoriteDrivers.includes(driver.Driver.driverId) ? (
                       <FaStar
-                        className="ms-2"
+                        className="me-1"
                         onClick={() => removeFavorite(driver)}
                         style={{ cursor: "pointer" }}
                       />
                     ) : (
                       <FaRegStar
-                        className="ms-2"
+                        className="me-1"
                         onClick={() => addFavorite(driver)}
                         style={{ cursor: "pointer" }}
                       />
                     )}
+                  </td>
+                  <td>{index + 1}</td>
+                  <td className="text-white fw-bold">
+                    {driver.Driver.givenName.charAt(0)}.
+                    {driver.Driver.familyName}
                   </td>
                   <td>
                     <Flag

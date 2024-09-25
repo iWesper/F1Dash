@@ -19,9 +19,9 @@ tr:nth-child(even) {
 }
 
 /* Estilos para as bento boxes */
-.max-vh-60 {
-  max-height: 60vh !important;
-  height: 60vh !important;
+.max-vh-80 {
+  max-height: 80vh !important;
+  height: 80vh !important;
 }
 
 .max-vh-60v2 {

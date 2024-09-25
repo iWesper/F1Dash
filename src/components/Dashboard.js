@@ -14,10 +14,10 @@ const Dashboard = ({setAlert}) => {
         </Col>
       </Row>
       <Row>
-        <Col xs="12" md="8">
+        <Col xs="12" lg="8">
           <StandingsBox setAlert={setAlert}/>
         </Col>
-        <Col xs="12" md="4">
+        <Col xs="12" lg="4">
           <NewsBox />
         </Col>
       </Row>

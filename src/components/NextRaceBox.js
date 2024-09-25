@@ -26,16 +26,16 @@ const NextRaceBox = () => {
     const apiKey = process.env.REACT_APP_WEATHER_API_KEY;
     const nextRaceWeatherData = [];
     const previousRaceWeatherData = [];
-  
+
     // Fetch next race weather data
     try {
       const nextRaceResponse = await axios.get(
         `https://api.worldweatheronline.com/premium/v1/weather.ashx?q=${latitude},${longitude}&date=${nextRaceDate}&format=json&key=${apiKey}`
       );
-  
+
       const nextRaceDailyWeather = nextRaceResponse.data.data.weather[0];
       const nextRaceHourlyWeather = nextRaceDailyWeather.hourly;
-  
+
       const nextRaceAvgTemperature =
         nextRaceHourlyWeather.reduce(
           (sum, data) => sum + Number(data.tempC),
@@ -56,7 +56,7 @@ const NextRaceBox = () => {
           (sum, data) => sum + Number(data.windspeedKmph),
           0
         ) / nextRaceHourlyWeather.length;
-  
+
       nextRaceWeatherData.push({
         date: nextRaceDailyWeather.date,
         temperature: nextRaceAvgTemperature,
@@ -64,23 +64,23 @@ const NextRaceBox = () => {
         precipitationIntensity: nextRaceAvgPrecipitation,
         windSpeed: nextRaceAvgWindSpeed,
       });
-  
+
       setNextRaceWeatherData(nextRaceWeatherData);
     } catch (error) {
       console.error("Error fetching next race weather data", error);
     }
-  
+
     // Fetch previous races weather data
     try {
       for (const date of previousRaceDates) {
         const previousRaceResponse = await axios.get(
           `https://api.worldweatheronline.com/premium/v1/past-weather.ashx?q=${latitude},${longitude}&date=${date}&format=json&key=${apiKey}`
         );
-  
+
         const previousRaceDailyWeather =
           previousRaceResponse.data.data.weather[0];
         const previousRaceHourlyWeather = previousRaceDailyWeather.hourly;
-  
+
         const previousRaceAvgTemperature =
           previousRaceHourlyWeather.reduce(
             (sum, data) => sum + Number(data.tempC),
@@ -101,7 +101,7 @@ const NextRaceBox = () => {
             (sum, data) => sum + Number(data.windspeedKmph),
             0
           ) / previousRaceHourlyWeather.length;
-  
+
         previousRaceWeatherData.push({
           date: previousRaceDailyWeather.date,
           temperature: previousRaceAvgTemperature,
@@ -110,13 +110,13 @@ const NextRaceBox = () => {
           windSpeed: previousRaceAvgWindSpeed,
         });
       }
-  
+
       setPreviousRaceWeatherData(previousRaceWeatherData);
       console.log(previousRaceWeatherData);
     } catch (error) {
       console.error("Error fetching previous races weather data", error);
     }
-  
+
     return { nextRaceWeatherData, previousRaceWeatherData };
   };
 
@@ -211,7 +211,10 @@ const NextRaceBox = () => {
       )
         .then(({ nextRaceWeatherData, previousRaceWeatherData }) => {
           // Se houver dados meteorológicos
-          if (nextRaceWeatherData.length > 0 || previousRaceWeatherData.length > 0) {
+          if (
+            nextRaceWeatherData.length > 0 ||
+            previousRaceWeatherData.length > 0
+          ) {
             setNextRaceWeatherData(nextRaceWeatherData[0]);
             setPreviousRaceWeatherData(previousRaceWeatherData);
           } else {
@@ -445,14 +448,13 @@ const NextRaceBox = () => {
             style={{ height: "20rem", maxHeight: "20rem", maxWidth: "100%" }}
           ></div>
         </Col>
-        <Col xs="12" md="6" className="d-flex flex-column align-items-center">
+        <Col xs="12" lg="6" className="d-flex flex-column align-items-center">
           {nextRaceWeatherData ? (
             <div className="mb-3 w-100">
               <div className="table-responsive">
                 <Table className="table-sm table-custom table-striped table-borderless caption-top">
                   <caption className="text-white text-lg-center fs-4">
-                    {" "}
-                    Weather Forecast{" "}
+                    Weather Forecast
                   </caption>
                   <thead>
                     <tr className="fs-5">
@@ -521,7 +523,7 @@ const NextRaceBox = () => {
                     </tr>
                     {previousRaceWeatherData &&
                       previousRaceWeatherData
-                        .sort((a, b) => new Date(b.date) - new Date(a.date)) // Sort by date in descending order
+                        .sort((a, b) => new Date(b.date) - new Date(a.date))
                         .map((data, index) => {
                           // Transformar a data em ano
                           const year = new Date(data.date).getFullYear();
@@ -579,89 +581,98 @@ const NextRaceBox = () => {
           ) : (
             <div className="mb-3 w-100">
               <p className="text-danger">
-                Sorry! Next race's weather forecast isn't available. Take a look
-                at the weather from the last 5 races:
+                Sorry! Next race's weather forecast still isn't available. Take
+                a look at the weather from the last 5 races:
               </p>
-              <Table className="table-sm table-custom table-striped table-borderless">
-                <thead>
-                  <tr className="fs-5">
-                    <th scope="col" className="px-1">
-                      Year
-                    </th>
-                    <th scope="col" className="px-1">
-                      🏆 Winner
-                    </th>
-                    <th scope="col" className="px-1">
-                      🌡️ Temperature
-                    </th>
-                    <th scope="col" className="px-1">
-                      📊 Pressure
-                    </th>
-                    <th scope="col" className="px-1">
-                      💧 Precipitation Intensity
-                    </th>
-                    <th scope="col" className="px-1">
-                      💨 Wind Speed
-                    </th>
-                  </tr>
-                </thead>
-                {previousRaceWeatherData ? (
-                  <tbody>
-                    {previousRaceWeatherData.map((data, index) => {
-                      // Transformar a data em ano
-                      const year = new Date(data.date).getFullYear();
-                      // Obter o vencedor da corrida desse ano
-                      const winner = lastWinners.find(
-                        (winner) => winner.season === String(year)
-                      );
-                      // Obter o nome do vencedor da corrida desse ano
-                      const winnerName = winner
-                        ? `${winner.Driver.givenName} ${winner.Driver.familyName}`
-                        : "N/A";
-
-                      // Formatar os dados para serem apresentados (obrigado AI)
-                      // Formatar a temperatura para celsius
-                      const temperature = `${data.temperature.toFixed(1)} ºC`;
-                      // Formatar a velocidade do vento para m/s
-                      const windSpeed = `${data.windSpeed.toFixed(1)} m/s`;
-                      // Formatar a intensidade da precipitação para Low, Medium ou High
-                      const precipitationIntensity =
-                        data.precipitationIntensity === 0
-                          ? "None"
-                          : data.precipitationIntensity < 0.05
-                          ? "Very Low"
-                          : data.precipitationIntensity < 0.1
-                          ? "Low"
-                          : data.precipitationIntensity < 0.4
-                          ? "Medium"
-                          : "High";
-                      // Formatar a pressão para hPa
-                      const pressure = `${(data.pressure / 100).toFixed(
-                        2
-                      )} hPa`;
-
-                      return (
-                        <tr key={index} className="fs-4">
-                          <td className="text-white px-1">{year}</td>
-                          <td className="text-white px-1">{winnerName}</td>
-                          <td className="text-white px-1">{temperature}</td>
-                          <td className="text-white px-1">{pressure}</td>
-                          <td className="text-white px-1">
-                            {precipitationIntensity}
-                          </td>
-                          <td className="text-white px-1">{windSpeed}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                ) : (
-                  <tbody>
-                    <tr>
-                      <td>Loading...</td>
+              <div className="table-responsive">
+                <Table className="table-sm table-custom table-striped table-borderless caption-top">
+                  <caption className="text-white text-lg-center fs-4">
+                    Weather Forecast
+                  </caption>
+                  <thead>
+                    <tr className="fs-5">
+                      <th scope="col" className="px-1">
+                        Year
+                      </th>
+                      <th scope="col" className="px-1">
+                        🏆 Winner
+                      </th>
+                      <th scope="col" className="px-1">
+                        🌡️ Temperature
+                      </th>
+                      <th scope="col" className="px-1">
+                        📊 Pressure
+                      </th>
+                      <th scope="col" className="px-1">
+                        💧 Precipitation Intensity
+                      </th>
+                      <th scope="col" className="px-1">
+                        💨 Wind Speed
+                      </th>
                     </tr>
-                  </tbody>
-                )}
-              </Table>
+                  </thead>
+                  {previousRaceWeatherData ? (
+                    <tbody>
+                      {previousRaceWeatherData
+                        .sort((a, b) => new Date(b.date) - new Date(a.date))
+                        .map((data, index) => {
+                          // Transformar a data em ano
+                          const year = new Date(data.date).getFullYear();
+                          // Obter o vencedor da corrida desse ano
+                          const winner = lastWinners.find(
+                            (winner) => winner.season === String(year)
+                          );
+                          // Obter o nome do vencedor da corrida desse ano
+                          const winnerName = winner
+                            ? `${winner.Driver.givenName} ${winner.Driver.familyName}`
+                            : "N/A";
+
+                          // Formatar os dados para serem apresentados (obrigado AI)
+                          // Formatar a temperatura para celsius
+                          const temperature = `${data.temperature.toFixed(
+                            1
+                          )} ºC`;
+                          // Formatar a velocidade do vento para m/s
+                          const windSpeed = `${data.windSpeed.toFixed(1)} m/s`;
+                          // Formatar a intensidade da precipitação para Low, Medium ou High
+                          const precipitationIntensity =
+                            data.precipitationIntensity === 0
+                              ? "None"
+                              : data.precipitationIntensity < 0.05
+                              ? "Very Low"
+                              : data.precipitationIntensity < 0.1
+                              ? "Low"
+                              : data.precipitationIntensity < 0.4
+                              ? "Medium"
+                              : "High";
+                          // Formatar a pressão para hPa
+                          const pressure = `${(data.pressure / 100).toFixed(
+                            2
+                          )} hPa`;
+
+                          return (
+                            <tr key={index} className="fs-4">
+                              <td className="text-white px-1">{year}</td>
+                              <td className="text-white px-1">{winnerName}</td>
+                              <td className="text-white px-1">{temperature}</td>
+                              <td className="text-white px-1">{pressure}</td>
+                              <td className="text-white px-1">
+                                {precipitationIntensity}
+                              </td>
+                              <td className="text-white px-1">{windSpeed}</td>
+                            </tr>
+                          );
+                        })}
+                    </tbody>
+                  ) : (
+                    <tbody>
+                      <tr>
+                        <td>Loading...</td>
+                      </tr>
+                    </tbody>
+                  )}
+                </Table>
+              </div>
             </div>
           )}
         </Col>
