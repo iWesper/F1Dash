@@ -38,7 +38,7 @@ export const Auth = () => {
                 <Col className="p-5" lg={6}>
                   <div className="text-center">
                     <h1 className="h4 text-gray-900 mb-5 text-uppercase fw-bold">
-                      Welcome to F1 Dash
+                      Welcome to F1 Dash!
                     </h1>
                   </div>
                   <Form>
