@@ -112,7 +112,6 @@ const NextRaceBox = () => {
       }
 
       setPreviousRaceWeatherData(previousRaceWeatherData);
-      console.log(previousRaceWeatherData);
     } catch (error) {
       console.error("Error fetching previous races weather data", error);
     }
@@ -501,16 +500,30 @@ const NextRaceBox = () => {
                       <td className="text-white px-1"> - </td>
                       <td className="text-white px-1"> Next race </td>
                       <td className="text-white px-1">
-                        {nextRaceWeatherData.temperature.toFixed(1)} ºC
+                        {nextRaceWeatherData.temperature === undefined
+                          ? "?"
+                          : nextRaceWeatherData.temperature.toFixed(1)}{" "}
+                        ºC
                       </td>
                       <td className="text-white px-1">
-                        {nextRaceWeatherData.windSpeed.toFixed(1)} m/s
+                        {nextRaceWeatherData.windSpeed === undefined
+                          ? "?"
+                          : nextRaceWeatherData.windSpeed.toFixed(1)}{" "}
+                        m/s
                       </td>
                       <td className="text-white px-1">
-                        {(nextRaceWeatherData.pressure / 100).toFixed(2)} hPa
+                        {nextRaceWeatherData.pressure === undefined
+                          ? "?"
+                          : (nextRaceWeatherData.pressure / 100).toFixed(
+                              2
+                            )}{" "}
+                        hPa
                       </td>
                       <td className="text-white px-1">
-                        {nextRaceWeatherData.precipitationIntensity === 0
+                        {nextRaceWeatherData.precipitationIntensity ===
+                        undefined
+                          ? "?"
+                          : nextRaceWeatherData.precipitationIntensity === 0
                           ? "None"
                           : nextRaceWeatherData.precipitationIntensity < 0.05
                           ? "Very Low"
