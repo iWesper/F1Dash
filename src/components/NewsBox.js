@@ -10,7 +10,7 @@ const NewsBox = () => {
     const fetchNews = async () => {
       try {
         const response = await axios.get(
-          `https://api.webz.io/newsApiLite?token=${apiKey}&q=site_category%3Asports%20language%3Aenglish%20site_type%3Anews%20Formula%201`
+          `https://api.webz.io/newsApiLite?token=${apiKey}&q=site%3Aformula1.com`
         );
         setNews(response.data.posts);
       } catch (err) {
