@@ -56,8 +56,6 @@ const NextRaceBox = () => {
         precipitationIntensity: avg(nextRaceHourlyWeather, "precipMM"),
         windSpeed: avg(nextRaceHourlyWeather, "windspeedKmph"),
       });
-
-      setNextRaceWeatherData(nextRaceWeatherData);
     } catch (error) {
       console.error("Error fetching next race weather data", error);
     }
@@ -84,8 +82,6 @@ const NextRaceBox = () => {
           windSpeed: avg(previousRaceHourlyWeather, "windspeedKmph"),
         });
       }
-
-      setPreviousRaceWeatherData(previousRaceWeatherData);
     } catch (error) {
       console.error("Error fetching previous races weather data", error);
     }
@@ -168,7 +164,10 @@ const NextRaceBox = () => {
           setPreviousRaceWeatherData(null);
         });
     }
-  }, [nextCircuit, circuitLatitude, circuitLongitude]);
+    // lastWinners must be a dependency: it loads asynchronously after the
+    // circuit data, and its dates drive the previous-race weather lookup.
+    // Without it the historical rows are fetched with an empty date list.
+  }, [nextCircuit, circuitLatitude, circuitLongitude, lastWinners]);
 
   // Construir o mapa e ir buscar a próxima corrida quando o geojson carrega
   useEffect(() => {
@@ -238,7 +237,10 @@ const NextRaceBox = () => {
         }
       });
     }
-  }, [geojsonData, circuitLatitude, circuitLongitude]);
+    // Only rebuild the map when the geojson loads. This effect *sets*
+    // circuitLatitude/Longitude; depending on them too would tear down and
+    // recreate the map and re-fetch the race on every coordinate update.
+  }, [geojsonData]);
 
   const year = nextCircuit ? new Date(nextCircuit[1]).getFullYear() : "";
 

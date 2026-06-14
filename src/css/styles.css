@@ -248,11 +248,10 @@ h1, h2, h3, h4, h5, h6 {
 }
 .eyebrow::before {
   content: "";
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
+  width: 18px;
+  height: 2px;
+  border-radius: 2px;
   background: var(--f1-red);
-  box-shadow: 0 0 10px var(--f1-red);
 }
 
 .panel__title {
