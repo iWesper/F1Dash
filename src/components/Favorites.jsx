@@ -2,6 +2,7 @@ import { useAuth } from './AuthProvider';
 import { getFavoriteDrivers } from './FavoritesService';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { FaStar } from 'react-icons/fa';
 import Driver from './Driver';
 
 function Favorites() {
@@ -34,7 +35,9 @@ function Favorites() {
 
     return (
         <div className='text-start mt-5'>
-            <h1 className='text-center text-white fw-bold'>⭐ Your Favorite Drivers ⭐</h1>
+            <h1 className='text-center text-white fw-bold'>
+                <FaStar className="ico" /> Your Favorite Drivers <FaStar className="ico" />
+            </h1>
             {favoriteDrivers.map(driverId => (
                 <Driver key={driverId} driverId={driverId} />
             ))}

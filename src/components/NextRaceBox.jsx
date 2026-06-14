@@ -2,6 +2,16 @@ import React, { useEffect, useState, useRef } from "react";
 import axios from "axios";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import {
+  FaRegCalendar,
+  FaRegClock,
+  FaHourglassHalf,
+  FaFlagCheckered,
+  FaTrophy,
+  FaTemperatureHalf,
+  FaWind,
+  FaDroplet,
+} from "react-icons/fa6";
 import geojsonFile from "../extra/f1-circuits.geojson";
 
 // --- helpers ----------------------------------------------------------------
@@ -295,13 +305,19 @@ const NextRaceBox = () => {
         {/* Left: key stats + countdown */}
         <div className="stat-stack">
           <div className="stat">
-            <span className="stat__label">📅 Date</span>
+            <span className="stat__label">
+              <FaRegCalendar className="ico" />
+              Date
+            </span>
             <span className="stat__value">
               {nextCircuit ? nextCircuit[1] : "—"}
             </span>
           </div>
           <div className="stat">
-            <span className="stat__label">🕙 Time</span>
+            <span className="stat__label">
+              <FaRegClock className="ico" />
+              Time
+            </span>
             <span className="stat__value">
               {nextCircuit && nextCircuit[2]
                 ? nextCircuit[2].replace("Z", " UTC")
@@ -309,9 +325,15 @@ const NextRaceBox = () => {
             </span>
           </div>
 
-          <span className="stat__label">⏳ Countdown</span>
+          <span className="stat__label">
+            <FaHourglassHalf className="ico" />
+            Countdown
+          </span>
           {countdown && countdown.live ? (
-            <div className="countdown--live">🏁 Lights out!</div>
+            <div className="countdown--live">
+              <FaFlagCheckered className="ico" />
+              Lights out!
+            </div>
           ) : countdown ? (
             <div className="countdown">
               {[
@@ -349,10 +371,10 @@ const NextRaceBox = () => {
               <thead>
                 <tr>
                   <th>When</th>
-                  <th>🏆 Winner</th>
-                  <th>🌡️ Temp</th>
-                  <th>💨 Wind</th>
-                  <th>💧 Rain</th>
+                  <th><FaTrophy className="ico" />Winner</th>
+                  <th><FaTemperatureHalf className="ico" />Temp</th>
+                  <th><FaWind className="ico" />Wind</th>
+                  <th><FaDroplet className="ico" />Rain</th>
                 </tr>
               </thead>
               <tbody>

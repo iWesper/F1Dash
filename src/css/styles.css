@@ -235,6 +235,17 @@ h1, h2, h3, h4, h5, h6 {
   margin-bottom: 18px;
 }
 
+/* Inline icon paired with a text label (replaces decorative emoji). Sized
+   to the surrounding text via 1em and nudged onto the text baseline. */
+.ico {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.125em;
+  margin-right: 0.45em;
+  flex-shrink: 0;
+}
+
 .eyebrow {
   font-family: var(--font-display);
   font-size: 0.72rem;
