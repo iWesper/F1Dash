@@ -861,6 +861,48 @@ h1, h2, h3, h4, h5, h6 {
 }
 .link-btn:hover { text-decoration: underline; }
 
+/* ---- Segmented toggle ------------------------------------- */
+.seg {
+  display: inline-flex;
+  padding: 3px;
+  gap: 2px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
+  border-radius: 999px;
+}
+.seg__btn {
+  border: none;
+  background: none;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.15s var(--ease), color 0.15s var(--ease);
+}
+.seg__btn.is-active {
+  background: var(--glass-bg-strong);
+  color: var(--text);
+  box-shadow: var(--shadow-sm);
+}
+.seg__btn:hover:not(.is-active) { color: var(--text); }
+
+/* Driver name as a link inside the standings table. */
+.driver-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  transition: color 0.15s var(--ease);
+}
+.driver-link:hover { color: var(--f1-red); text-decoration: underline; }
+
 /* ---- Driver card ------------------------------------------ */
 .driver-list { display: flex; flex-direction: column; gap: 20px; }
 .driver-card {

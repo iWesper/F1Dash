@@ -17,6 +17,8 @@ const Flag = FlagModule.default || FlagModule;
 const StandingsBox = ({ setAlert }) => {
   // Variável driverStandings que guarda o array de dados da API
   const [driverStandings, setDriverStandings] = useState([]);
+  const [constructorStandings, setConstructorStandings] = useState([]);
+  const [tab, setTab] = useState("drivers");
   const [favoriteDrivers, setFavoriteDrivers] = useState([]);
   const [apiIsDown, setApiIsDown] = useState(true);
   const { user } = useAuth();
@@ -126,9 +128,9 @@ const StandingsBox = ({ setAlert }) => {
     }
   }, [user]);
 
-  // Ao carregar na página, faz um GET request à API e guarda os dados
+  // Ao carregar na página, faz um GET request à API e guarda os dados.
+  // Jolpica é o sucessor compatível da API Ergast e suporta CORS diretamente.
   useEffect(() => {
-    // Jolpica é o sucessor compatível da API Ergast e suporta CORS diretamente.
     axios
       .get("https://api.jolpi.ca/ergast/f1/current/driverStandings.json")
       .then((response) => {
@@ -141,19 +143,55 @@ const StandingsBox = ({ setAlert }) => {
         setApiIsDown(true);
         console.error("F1 data API unavailable", error);
       });
+
+    axios
+      .get("https://api.jolpi.ca/ergast/f1/current/constructorStandings.json")
+      .then((response) => {
+        setConstructorStandings(
+          response.data.MRData.StandingsTable.StandingsLists[0]
+            .ConstructorStandings
+        );
+      })
+      .catch((error) => {
+        console.error("Constructor standings unavailable", error);
+      });
   }, []);
 
   const season =
     driverStandings.length > 0 ? new Date().getFullYear() : "";
 
+  const activeEmpty =
+    tab === "drivers"
+      ? driverStandings.length === 0
+      : constructorStandings.length === 0;
+
   return (
     <section className="glass panel">
       <div className="panel__head">
         <div>
-          <span className="eyebrow">Championship</span>
-          <h2 className="panel__title">Driver Standings</h2>
+          <span className="eyebrow">Championship {season}</span>
+          <h2 className="panel__title">Standings</h2>
         </div>
-        {season && <span className="text-dim">{season}</span>}
+        <div className="seg" role="tablist" aria-label="Standings type">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === "drivers"}
+            className={`seg__btn ${tab === "drivers" ? "is-active" : ""}`}
+            onClick={() => setTab("drivers")}
+          >
+            Drivers
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === "constructors"}
+            className={`seg__btn ${tab === "constructors" ? "is-active" : ""}`}
+            onClick={() => setTab("constructors")}
+          >
+            Teams
+          </button>
+        </div>
       </div>
 
       {apiIsDown ? (
@@ -161,12 +199,12 @@ const StandingsBox = ({ setAlert }) => {
           <h3>Standings unavailable</h3>
           <p>The F1 data API isn't responding right now. Please try again later.</p>
         </div>
-      ) : driverStandings.length === 0 ? (
+      ) : activeEmpty ? (
         <div className="state">
           <div className="spinner" />
           <p>Loading standings…</p>
         </div>
-      ) : (
+      ) : tab === "drivers" ? (
         <div className="panel__scroll">
           <table className="dtable">
             <thead>
@@ -204,7 +242,15 @@ const StandingsBox = ({ setAlert }) => {
                       </span>
                     </td>
                     <td className="strong">
-                      {driver.Driver.givenName.charAt(0)}. {driver.Driver.familyName}
+                      <button
+                        className="driver-link"
+                        onClick={() =>
+                          navigate(`/driver/${driver.Driver.driverId}`)
+                        }
+                      >
+                        {driver.Driver.givenName.charAt(0)}.{" "}
+                        {driver.Driver.familyName}
+                      </button>
                     </td>
                     <td>
                       <span className="cell-inline">
@@ -218,6 +264,47 @@ const StandingsBox = ({ setAlert }) => {
                     </td>
                     <td>{driver.Constructors[0].name}</td>
                     <td className="num">{driver.points}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="panel__scroll">
+          <table className="dtable">
+            <thead>
+              <tr>
+                <th>Pos</th>
+                <th>Constructor</th>
+                <th>Nationality</th>
+                <th>Wins</th>
+                <th>Pts</th>
+              </tr>
+            </thead>
+            <tbody>
+              {constructorStandings.map((team, index) => {
+                const pos = index + 1;
+                return (
+                  <tr key={team.Constructor.constructorId}>
+                    <td>
+                      <span className={`pos ${pos <= 3 ? `pos--${pos}` : ""}`}>
+                        {pos}
+                      </span>
+                    </td>
+                    <td className="strong">{team.Constructor.name}</td>
+                    <td>
+                      <span className="cell-inline">
+                        <Flag
+                          code={nationalityToCode[team.Constructor.nationality]}
+                          className="flag"
+                          fallback={null}
+                        />
+                        {team.Constructor.nationality}
+                      </span>
+                    </td>
+                    <td className="num">{team.wins}</td>
+                    <td className="num">{team.points}</td>
                   </tr>
                 );
               })}
