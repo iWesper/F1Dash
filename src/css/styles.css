@@ -304,16 +304,25 @@ h1, h2, h3, h4, h5, h6 {
 
 .nextrace__grid {
   display: grid;
-  grid-template-columns: minmax(200px, 0.9fr) minmax(260px, 1.3fr) minmax(280px, 1.6fr);
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.3fr) minmax(0, 1.6fr);
   gap: clamp(14px, 1.8vw, 22px);
   align-items: stretch;
+  min-width: 0;
+}
+/* Grid (and flex) children default to min-width:auto, which refuses to
+   shrink below their content's intrinsic width and causes the panel to
+   overflow horizontally on narrow screens. Allow them to shrink. */
+.stat-stack,
+.nextrace__map-col,
+.nextrace__weather-col {
+  min-width: 0;
 }
 @media (max-width: 1100px) {
-  .nextrace__grid { grid-template-columns: 1fr 1fr; }
+  .nextrace__grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .nextrace__weather-col { grid-column: 1 / -1; }
 }
 @media (max-width: 640px) {
-  .nextrace__grid { grid-template-columns: 1fr; }
+  .nextrace__grid { grid-template-columns: minmax(0, 1fr); }
 }
 
 .stat {
@@ -441,6 +450,26 @@ h1, h2, h3, h4, h5, h6 {
 .dtable .strong {
   color: var(--text);
   font-weight: 600;
+}
+
+/* Lets a wide table scroll within its column instead of overflowing the
+   panel on narrow screens. */
+.dtable-wrap {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+@media (max-width: 640px) {
+  .dtable {
+    font-size: 0.82rem;
+  }
+  .dtable thead th {
+    padding: 8px 8px;
+  }
+  .dtable tbody td {
+    padding: 9px 8px;
+  }
 }
 
 .pos {

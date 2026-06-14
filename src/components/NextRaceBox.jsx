@@ -342,6 +342,7 @@ const NextRaceBox = () => {
             Weather
           </span>
           {weatherRows.length > 0 ? (
+            <div className="dtable-wrap">
             <table className="dtable">
               <thead>
                 <tr>
@@ -383,6 +384,7 @@ const NextRaceBox = () => {
                 })}
               </tbody>
             </table>
+            </div>
           ) : (
             <div className="state">
               <p>
