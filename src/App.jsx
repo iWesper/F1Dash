@@ -13,6 +13,7 @@ import {
 } from "react-router-dom";
 import Favorites from "./components/Favorites";
 import HeaderNav from "./components/HeaderNav";
+import ErrorBoundary from "./components/ErrorBoundary";
 import { Alert } from "reactstrap";
 
 function App() {
@@ -47,11 +48,13 @@ function App() {
           >
             {alert.message}
           </Alert>
-          <Routes>
-            <Route path="/" index element={<Dashboard setAlert={setAlert} />} />
-            <Route path="/login" element={<Auth />} />
-            <Route path="/favorites" element={<Favorites />} />
-          </Routes>
+          <ErrorBoundary label="this page">
+            <Routes>
+              <Route path="/" index element={<Dashboard setAlert={setAlert} />} />
+              <Route path="/login" element={<Auth />} />
+              <Route path="/favorites" element={<Favorites />} />
+            </Routes>
+          </ErrorBoundary>
           {/* Linha abaixo serve para dar lock à app e apenas permitir acesso quando logged in */}
           {/* {isLoggedIn ? <h1>Logged in</h1> : <Auth />} */}
         </div>
