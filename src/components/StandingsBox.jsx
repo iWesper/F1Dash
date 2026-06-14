@@ -4,8 +4,6 @@ import { useNavigate } from "react-router-dom";
 // vem encapsulado em { default: Componente }. Desembrulhar para obter o componente.
 import FlagModule from "react-world-flags";
 import axios from "axios";
-
-const Flag = FlagModule.default || FlagModule;
 import {
   addFavoriteDriver,
   removeFavoriteDriver,
@@ -13,6 +11,8 @@ import {
 } from "./FavoritesService";
 import { useAuth } from "./AuthProvider";
 import { FaStar, FaRegStar } from "react-icons/fa";
+
+const Flag = FlagModule.default || FlagModule;
 
 const StandingsBox = ({ setAlert }) => {
   // Variável driverStandings que guarda o array de dados da API
@@ -61,15 +61,12 @@ const StandingsBox = ({ setAlert }) => {
     SouthAfrican: "ZAF",
     Hungarian: "HUN",
     EastGerman: "DEU",
-    Rhodesian: "ZWE",
     Argentinian: "ARG",
   };
 
   // Adicionar um driver aos favoritos
   const addFavorite = (driver) => {
-    // Verificar se o utilizador está logado
     if (user) {
-      // Adicionar o driver aos favoritos
       addFavoriteDriver(user.uid, driver.Driver.driverId)
         .then(() => {
           setAlert({
@@ -107,7 +104,7 @@ const StandingsBox = ({ setAlert }) => {
             favoriteDrivers.filter((id) => id !== driver.Driver.driverId)
           );
         })
-        .catch((error) => {
+        .catch(() => {
           setAlert({
             visible: true,
             message:
@@ -118,23 +115,18 @@ const StandingsBox = ({ setAlert }) => {
     }
   };
 
-  // Ao carregar na página, faz uma request à Firebase e guarda os dados no array driverStandings
+  // Ao carregar na página, vai buscar os favoritos do utilizador
   useEffect(() => {
     if (user) {
       getFavoriteDrivers(user.uid)
-        .then((drivers) => {
-          setFavoriteDrivers(drivers);
-        })
+        .then((drivers) => setFavoriteDrivers(drivers))
         .catch((error) =>
-          window.alert(
-            "An error occurred while fetching your favorite drivers! Please try again later.",
-            error
-          )
+          console.error("Error fetching favorite drivers", error)
         );
     }
   }, [user]);
 
-  // Ao carregar na página, faz um GET request à API e guarda os dados no array driverStandings
+  // Ao carregar na página, faz um GET request à API e guarda os dados
   useEffect(() => {
     // Jolpica é o sucessor compatível da API Ergast e suporta CORS diretamente.
     axios
@@ -147,84 +139,91 @@ const StandingsBox = ({ setAlert }) => {
       })
       .catch((error) => {
         setApiIsDown(true);
-        window.alert(
-          "At the moment, the F1 Data API used isn't available. Please, try again later.",
-          error
-        );
+        console.error("F1 data API unavailable", error);
       });
   }, []);
 
+  const season =
+    driverStandings.length > 0 ? new Date().getFullYear() : "";
+
   return (
-    <div className="box max-vh-80">
-      <div className="standings-container p-4">
-        {/* <Link to="/standings"> */}
-        <p className="text-white fs-2 mb-3 fw-bold text-start border-bottom">
-          STANDINGS
-        </p>
-        {apiIsDown && (
-          <div className="d-flex flex-column h-100 align-items-center text-center justify-content-center">
-            <h1 className="text-white">
-              Oops! The F1 Data API is currently unavailable.
-            </h1>
-            <h2 className="text-white">Please try again later.</h2>
-          </div>
-        )}
-        {driverStandings && !apiIsDown ? (
-          <table className="w-100">
+    <section className="glass panel">
+      <div className="panel__head">
+        <div>
+          <span className="eyebrow">Championship</span>
+          <h2 className="panel__title">Driver Standings</h2>
+        </div>
+        {season && <span className="text-dim">{season}</span>}
+      </div>
+
+      {apiIsDown ? (
+        <div className="state">
+          <h3>Standings unavailable</h3>
+          <p>The F1 data API isn't responding right now. Please try again later.</p>
+        </div>
+      ) : driverStandings.length === 0 ? (
+        <div className="state">
+          <div className="spinner" />
+          <p>Loading standings…</p>
+        </div>
+      ) : (
+        <div className="panel__scroll">
+          <table className="dtable">
             <thead>
-              <tr className="text-start">
-                <th>FAV</th>
-                <th>POS</th>
-                <th>DRIVER</th>
-                <th>NATIONALITY</th>
-                <th>CONSTRUCTOR</th>
-                <th>PTS</th>
+              <tr>
+                <th aria-label="Favorite"></th>
+                <th>Pos</th>
+                <th>Driver</th>
+                <th>Nationality</th>
+                <th>Constructor</th>
+                <th>Pts</th>
               </tr>
             </thead>
-            <tbody className="fs-5">
-              {driverStandings.map((driver, index) => (
-                <tr className="text-start" key={index}>
-                  <td>
-                    {favoriteDrivers.includes(driver.Driver.driverId) ? (
-                      <FaStar
-                        className="me-1"
-                        onClick={() => removeFavorite(driver)}
-                        style={{ cursor: "pointer" }}
+            <tbody>
+              {driverStandings.map((driver, index) => {
+                const isFav = favoriteDrivers.includes(driver.Driver.driverId);
+                const pos = index + 1;
+                return (
+                  <tr key={driver.Driver.driverId}>
+                    <td>
+                      <button
+                        className={`star-btn ${isFav ? "star-btn--on" : ""}`}
+                        aria-label={
+                          isFav ? "Remove favorite" : "Add favorite"
+                        }
+                        onClick={() =>
+                          isFav ? removeFavorite(driver) : addFavorite(driver)
+                        }
+                      >
+                        {isFav ? <FaStar /> : <FaRegStar />}
+                      </button>
+                    </td>
+                    <td>
+                      <span className={`pos ${pos <= 3 ? `pos--${pos}` : ""}`}>
+                        {pos}
+                      </span>
+                    </td>
+                    <td className="strong">
+                      {driver.Driver.givenName.charAt(0)}. {driver.Driver.familyName}
+                    </td>
+                    <td>
+                      <Flag
+                        code={nationalityToCode[driver.Driver.nationality]}
+                        className="flag"
+                        fallback={null}
                       />
-                    ) : (
-                      <FaRegStar
-                        className="me-1"
-                        onClick={() => addFavorite(driver)}
-                        style={{ cursor: "pointer" }}
-                      />
-                    )}
-                  </td>
-                  <td>{index + 1}</td>
-                  <td className="text-white fw-bold">
-                    {driver.Driver.givenName.charAt(0)}.
-                    {driver.Driver.familyName}
-                  </td>
-                  <td>
-                    <Flag
-                      code={nationalityToCode[driver.Driver.nationality]}
-                      height="15px"
-                      width="30px"
-                      className="mx-1"
-                    />
-                    {driver.Driver.nationality}
-                  </td>
-                  <td>{driver.Constructors[0].name}</td>
-                  <td className="fw-bold text-white">{driver.points}</td>
-                </tr>
-              ))}
+                      {driver.Driver.nationality}
+                    </td>
+                    <td>{driver.Constructors[0].name}</td>
+                    <td className="num">{driver.points}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
-        ) : !apiIsDown ? (
-          <div className="text-white">Loading...</div>
-        ) : null}
-        {/* </Link> */}
-      </div>
-    </div>
+        </div>
+      )}
+    </section>
   );
 };
 

@@ -1,41 +1,46 @@
 import React from "react";
-import { Row, Col, Container } from 'reactstrap';
 import StandingsBox from "./StandingsBox";
 import NextRaceBox from "./NextRaceBox";
 import NewsBox from "./NewsBox";
 import VideosBox from "./VideosBox";
 import ErrorBoundary from "./ErrorBoundary";
+import { FaTriangleExclamation } from "react-icons/fa6";
 
-const Dashboard = ({setAlert}) => {
+const Dashboard = ({ setAlert }) => {
   return (
-    <Container fluid className="dashboard">
-      <Row>
-        <Col xs="12">
+    <main className="page">
+      <p className="banner glass">
+        <FaTriangleExclamation size={15} />
+        This app relies on external APIs I don't control — some panels may be
+        unavailable if a provider is down.
+      </p>
+
+      <div className="bento">
+        <div className="bento__nextrace">
           <ErrorBoundary label="the next race">
             <NextRaceBox />
           </ErrorBoundary>
-        </Col>
-      </Row>
-      <Row>
-        <Col xs="12" lg="8">
+        </div>
+
+        <div className="bento__standings">
           <ErrorBoundary label="the standings">
-            <StandingsBox setAlert={setAlert}/>
+            <StandingsBox setAlert={setAlert} />
           </ErrorBoundary>
-        </Col>
-        <Col xs="12" lg="4">
+        </div>
+
+        <div className="bento__news">
           <ErrorBoundary label="the news">
             <NewsBox />
           </ErrorBoundary>
-        </Col>
-      </Row>
-      <Row>
-        <Col>
+        </div>
+
+        <div className="bento__videos">
           <ErrorBoundary label="the videos">
             <VideosBox />
           </ErrorBoundary>
-        </Col>
-      </Row>
-    </Container>
+        </div>
+      </div>
+    </main>
   );
 };
 

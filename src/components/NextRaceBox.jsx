@@ -3,7 +3,17 @@ import axios from "axios";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import geojsonFile from "../extra/f1-circuits.geojson";
-import { Container, Row, Col, Table } from "reactstrap";
+
+// --- helpers ----------------------------------------------------------------
+const precipLabel = (v) => {
+  if (v === undefined || v === null) return "?";
+  if (v === 0) return "None";
+  if (v < 0.05) return "Very Low";
+  if (v < 0.1) return "Low";
+  if (v < 0.4) return "Medium";
+  return "High";
+};
+const isWet = (label) => label === "Medium" || label === "High";
 
 const NextRaceBox = () => {
   const [geojsonData, setGeojsonData] = useState(null);
@@ -14,7 +24,7 @@ const NextRaceBox = () => {
   const [circuitLongitude, setCircuitLongitude] = useState(null);
   const [nextRaceWeatherData, setNextRaceWeatherData] = useState(null);
   const [previousRaceWeatherData, setPreviousRaceWeatherData] = useState(null);
-  const [countdown, setCountdown] = useState(null);
+  const [countdown, setCountdown] = useState(null); // { days, hours, minutes, seconds } | { live: true }
   const mapRef = useRef(null);
 
   const getWeatherData = async (
@@ -36,33 +46,15 @@ const NextRaceBox = () => {
       const nextRaceDailyWeather = nextRaceResponse.data.data.weather[0];
       const nextRaceHourlyWeather = nextRaceDailyWeather.hourly;
 
-      const nextRaceAvgTemperature =
-        nextRaceHourlyWeather.reduce(
-          (sum, data) => sum + Number(data.tempC),
-          0
-        ) / nextRaceHourlyWeather.length;
-      const nextRaceAvgPressure =
-        nextRaceHourlyWeather.reduce(
-          (sum, data) => sum + Number(data.pressure),
-          0
-        ) / nextRaceHourlyWeather.length;
-      const nextRaceAvgPrecipitation =
-        nextRaceHourlyWeather.reduce(
-          (sum, data) => sum + Number(data.precipMM),
-          0
-        ) / nextRaceHourlyWeather.length;
-      const nextRaceAvgWindSpeed =
-        nextRaceHourlyWeather.reduce(
-          (sum, data) => sum + Number(data.windspeedKmph),
-          0
-        ) / nextRaceHourlyWeather.length;
+      const avg = (arr, prop) =>
+        arr.reduce((sum, data) => sum + Number(data[prop]), 0) / arr.length;
 
       nextRaceWeatherData.push({
         date: nextRaceDailyWeather.date,
-        temperature: nextRaceAvgTemperature,
-        pressure: nextRaceAvgPressure,
-        precipitationIntensity: nextRaceAvgPrecipitation,
-        windSpeed: nextRaceAvgWindSpeed,
+        temperature: avg(nextRaceHourlyWeather, "tempC"),
+        pressure: avg(nextRaceHourlyWeather, "pressure"),
+        precipitationIntensity: avg(nextRaceHourlyWeather, "precipMM"),
+        windSpeed: avg(nextRaceHourlyWeather, "windspeedKmph"),
       });
 
       setNextRaceWeatherData(nextRaceWeatherData);
@@ -81,33 +73,15 @@ const NextRaceBox = () => {
           previousRaceResponse.data.data.weather[0];
         const previousRaceHourlyWeather = previousRaceDailyWeather.hourly;
 
-        const previousRaceAvgTemperature =
-          previousRaceHourlyWeather.reduce(
-            (sum, data) => sum + Number(data.tempC),
-            0
-          ) / previousRaceHourlyWeather.length;
-        const previousRaceAvgPressure =
-          previousRaceHourlyWeather.reduce(
-            (sum, data) => sum + Number(data.pressure),
-            0
-          ) / previousRaceHourlyWeather.length;
-        const previousRaceAvgPrecipitation =
-          previousRaceHourlyWeather.reduce(
-            (sum, data) => sum + Number(data.precipMM),
-            0
-          ) / previousRaceHourlyWeather.length;
-        const previousRaceAvgWindSpeed =
-          previousRaceHourlyWeather.reduce(
-            (sum, data) => sum + Number(data.windspeedKmph),
-            0
-          ) / previousRaceHourlyWeather.length;
+        const avg = (arr, prop) =>
+          arr.reduce((sum, data) => sum + Number(data[prop]), 0) / arr.length;
 
         previousRaceWeatherData.push({
           date: previousRaceDailyWeather.date,
-          temperature: previousRaceAvgTemperature,
-          pressure: previousRaceAvgPressure,
-          precipitationIntensity: previousRaceAvgPrecipitation,
-          windSpeed: previousRaceAvgWindSpeed,
+          temperature: avg(previousRaceHourlyWeather, "tempC"),
+          pressure: avg(previousRaceHourlyWeather, "pressure"),
+          precipitationIntensity: avg(previousRaceHourlyWeather, "precipMM"),
+          windSpeed: avg(previousRaceHourlyWeather, "windspeedKmph"),
         });
       }
 
@@ -119,89 +93,57 @@ const NextRaceBox = () => {
     return { nextRaceWeatherData, previousRaceWeatherData };
   };
 
-  // Corre apenas uma vez, quando o componente é montado, para carregar o ficheiro geojson
+  // Carregar o ficheiro geojson uma vez, na montagem
   useEffect(() => {
     fetch(geojsonFile)
       .then((response) => response.json())
       .then((data) => setGeojsonData(data));
   }, []);
 
+  // Contagem decrescente até à corrida (atualiza a cada segundo)
   useEffect(() => {
     if (nextCircuit && nextCircuit[1]) {
-      const raceDate = new Date(nextCircuit[1]);
+      const iso = nextCircuit[2]
+        ? `${nextCircuit[1]}T${nextCircuit[2]}`
+        : nextCircuit[1];
+      const raceDate = new Date(iso);
 
       const updateCountdown = () => {
-        const now = new Date();
-        const timeDifference = raceDate - now;
-
+        const timeDifference = raceDate - new Date();
         if (timeDifference > 0) {
-          const days = Math.floor(timeDifference / (1000 * 60 * 60 * 24));
-          const hours = Math.floor(
-            (timeDifference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
-          );
-          const minutes = Math.floor(
-            (timeDifference % (1000 * 60 * 60)) / (1000 * 60)
-          );
-          const seconds = Math.floor((timeDifference % (1000 * 60)) / 1000);
-
-          setCountdown(`${days}d ${hours}h ${minutes}m ${seconds}s`);
+          setCountdown({
+            days: Math.floor(timeDifference / (1000 * 60 * 60 * 24)),
+            hours: Math.floor(
+              (timeDifference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
+            ),
+            minutes: Math.floor((timeDifference % (1000 * 60 * 60)) / (1000 * 60)),
+            seconds: Math.floor((timeDifference % (1000 * 60)) / 1000),
+          });
         } else {
-          setCountdown("Race has started!");
+          setCountdown({ live: true });
         }
       };
-      const timer = setInterval(updateCountdown, 1000);
 
+      updateCountdown();
+      const timer = setInterval(updateCountdown, 1000);
       return () => clearInterval(timer);
     }
   }, [nextCircuit]);
 
-  // Corre quando o lastWinners, circuitLatitude ou circuitLongitude é alterado
+  // Obter dados meteorológicos quando há próxima corrida + coordenadas
   useEffect(() => {
-    // Se houver vencedores e latitude e longitude do circuito
-    if (lastWinners.length > 0 && circuitLatitude && circuitLongitude) {
-      // Obter as datas das últimas 5 corridas
-      const lastFiveRaceDates = lastWinners.map((winner) => {
-        // Transformar a data em ano
-        const date = new Date(winner.date);
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, "0"); // +1 porque os meses começam em 0
-        const day = String(date.getDate()).padStart(2, "0");
-        return `${year}-${month}-${day}`;
-      });
-
-      // // Obter os dados meteorológicos das últimas 5 corridas
-      // getWeatherData(circuitLatitude, circuitLongitude, lastFiveRaceDates)
-      //   .then((weatherData) => {
-      //     setPreviousRaceWeatherData(weatherData);
-      //   })
-      //   .catch((error) => {
-      //     console.error(error);
-      //   });
-    }
-  }, [lastWinners]);
-
-  // Corre quando o nextRace, circuitLatitude ou circuitLongitude é alterado
-  useEffect(() => {
-    // Se houver uma próxima corrida e latitude e longitude do circuito
     if (nextCircuit && circuitLatitude && circuitLongitude) {
-      // Transformar a data em ano
-      const date = new Date(nextCircuit[1]);
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, "0"); // +1 porque os meses começam em 0
-      const day = String(date.getDate()).padStart(2, "0");
-      const nextRaceDate = `${year}-${month}-${day}`;
-
-      // Obter as datas das últimas 5 corridas
-      const lastFiveRaceDates = lastWinners.map((winner) => {
-        // Transformar a data em ano
-        const date = new Date(winner.date);
+      const toYmd = (d) => {
+        const date = new Date(d);
         const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, "0"); // +1 porque os meses começam em 0
+        const month = String(date.getMonth() + 1).padStart(2, "0");
         const day = String(date.getDate()).padStart(2, "0");
         return `${year}-${month}-${day}`;
-      });
+      };
 
-      // Obter os dados meteorológicos da próxima corrida
+      const nextRaceDate = toYmd(nextCircuit[1]);
+      const lastFiveRaceDates = lastWinners.map((winner) => toYmd(winner.date));
+
       getWeatherData(
         circuitLatitude,
         circuitLongitude,
@@ -209,7 +151,6 @@ const NextRaceBox = () => {
         lastFiveRaceDates
       )
         .then(({ nextRaceWeatherData, previousRaceWeatherData }) => {
-          // Se houver dados meteorológicos
           if (
             nextRaceWeatherData.length > 0 ||
             previousRaceWeatherData.length > 0
@@ -229,461 +170,230 @@ const NextRaceBox = () => {
     }
   }, [nextCircuit, circuitLatitude, circuitLongitude]);
 
-  // Corre quando o geojson é carregado e sempre que o geojsonData é alterado
+  // Construir o mapa e ir buscar a próxima corrida quando o geojson carrega
   useEffect(() => {
     // Jolpica é o sucessor compatível da API Ergast (desativada no início de 2025).
-    // Suporta CORS diretamente, por isso já não é necessária uma proxy.
     const ergastBase = "https://api.jolpi.ca/ergast/f1";
-    // Se o geojson foi carregado
     if (geojsonData) {
-      // Se o mapa já existir, remover
       if (mapRef.current) {
         mapRef.current.remove();
       }
 
-      // Criar o mapa
-      mapRef.current = L.map("map").setView([51.505, -0.09], 13);
+      mapRef.current = L.map("map", { zoomControl: true, attributionControl: true })
+        .setView([30, 10], 2);
 
-      // Adicionar a camada do OpenStreetMap
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        maxZoom: 19,
-      }).addTo(mapRef.current);
+      // Tiles escuros (CARTO) para combinar com o tema; suportam CORS diretamente.
+      L.tileLayer(
+        "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+        {
+          maxZoom: 19,
+          subdomains: "abcd",
+          attribution: "&copy; OpenStreetMap &copy; CARTO",
+        }
+      ).addTo(mapRef.current);
 
-      // Obter a próxima corrida
-      axios
-        .get(`${ergastBase}/current/next.json`)
-        .then((response) => {
-          // Se houver uma próxima corrida já definida
-          if (response.data.MRData.RaceTable.Races.length > 0) {
-            // Obter o circuito da próxima corrida
-            const circuitName =
-              response.data.MRData.RaceTable.Races[0].Circuit.circuitName;
-            // Obter o ID do circuito
-            const circuitID =
-              response.data.MRData.RaceTable.Races[0].Circuit.circuitId;
-            // Obter o circuito do geojson
-            const circuit = geojsonData.features.find(
-              (feature) => feature.properties.Name === circuitName
-            );
-            // Obter a data e hora da próxima corrida
-            const raceDate = response.data.MRData.RaceTable.Races[0].date;
-            const raceTime = response.data.MRData.RaceTable.Races[0].time;
+      const drawCircuit = (circuit) => {
+        const layer = L.geoJSON(circuit, {
+          style: { color: "#ff2b39", weight: 3, opacity: 0.95 },
+        }).addTo(mapRef.current);
+        mapRef.current.fitBounds(layer.getBounds(), { padding: [24, 24] });
+      };
 
-            // Guardar a próxima corrida no estado
-            setNextCircuit([circuitName, raceDate, raceTime]);
+      const handleRace = (race, isNext) => {
+        const circuitName = race.Circuit.circuitName;
+        const circuitID = race.Circuit.circuitId;
+        const circuit = geojsonData.features.find(
+          (feature) => feature.properties.Name === circuitName
+        );
+        setNextCircuit([circuitName, race.date, race.time]);
+        setCircuitLatitude(race.Circuit.Location.lat);
+        setCircuitLongitude(race.Circuit.Location.long);
 
-            // Obter a latitude e longitude do circuito
-            const circuitLatitude =
-              response.data.MRData.RaceTable.Races[0].Circuit.Location.lat;
-            const circuitLongitude =
-              response.data.MRData.RaceTable.Races[0].Circuit.Location.long;
+        if (circuit) {
+          drawCircuit(circuit);
+          axios
+            .get(`${ergastBase}/circuits/${circuitID}/results/1.json`)
+            .then((response) => {
+              const races = response.data.MRData.RaceTable.Races;
+              const winners = races.slice(-5).map((r) => ({
+                ...r.Results[0],
+                season: r.season,
+                date: r.date,
+              }));
+              setLastWinners(winners);
+            });
+        }
+      };
 
-            // Guardar a latitude e longitude do circuito no estado
-            setCircuitLatitude(circuitLatitude);
-            setCircuitLongitude(circuitLongitude);
-
-            // Se o circuito existir
-            if (circuit) {
-              // Adicionar o circuito ao mapa e fazer zoom
-              L.geoJSON(circuit).addTo(mapRef.current);
-              mapRef.current.fitBounds(L.geoJSON(circuit).getBounds());
-
-              // Obter os vencedores de todas as corridas no circuito
-              axios
-                .get(`${ergastBase}/circuits/${circuitID}/results/1.json`)
-                .then((response) => {
-                  // Guardar as corridas no estado
-                  const races = response.data.MRData.RaceTable.Races;
-
-                  // Filtrar os vencedores das últimas 5 corridas
-                  const winners = races.slice(-5).map((race) => ({
-                    ...race.Results[0],
-                    season: race.season,
-                    date: race.date,
-                  }));
-
-                  // Guardar os vencedores no estado
-                  setLastWinners(winners);
-                });
-            }
-          } else {
-            // Se não houver uma próxima corrida definida (off season)
-            setNextRaceAvailability(false);
-            // Obter o circuito da última corrida
-            axios
-              .get(`${ergastBase}/current/last.json`)
-              .then((response) => {
-                const circuitName =
-                  response.data.MRData.RaceTable.Races[0].Circuit.circuitName;
-                const circuitID =
-                  response.data.MRData.RaceTable.Races[0].Circuit.circuitId;
-                const circuit = geojsonData.features.find(
-                  (feature) => feature.properties.Name === circuitName
-                );
-                // Obter a data e hora da próxima corrida
-                const raceDate = response.data.MRData.RaceTable.Races[0].date;
-                const raceTime = response.data.MRData.RaceTable.Races[0].time;
-
-                // Guardar a próxima corrida no estado
-                setNextCircuit([circuitName, raceDate, raceTime]);
-
-                // Obter a latitude e longitude do circuito
-                const circuitLatitude =
-                  response.data.MRData.RaceTable.Races[0].Circuit.Location.lat;
-                const circuitLongitude =
-                  response.data.MRData.RaceTable.Races[0].Circuit.Location.long;
-
-                // Guardar a latitude e longitude do circuito no estado
-                setCircuitLatitude(circuitLatitude);
-                setCircuitLongitude(circuitLongitude);
-
-                // Se o circuito existir
-                if (circuit) {
-                  // Adicionar o circuito ao mapa e fazer zoom
-                  L.geoJSON(circuit).addTo(mapRef.current);
-                  mapRef.current.fitBounds(L.geoJSON(circuit).getBounds());
-
-                  // Obter os vencedores de todas as corridas no circuito
-                  // Ao implementar a API de meteorologia, esta call da API foi aproveitada para guardar as datas das corridas anteriores no mesmo circuito
-                  axios
-                    .get(`${ergastBase}/circuits/${circuitID}/results/1.json`)
-                    .then((response) => {
-                      // Guardar as corridas no estado
-                      const races = response.data.MRData.RaceTable.Races;
-
-                      // Filtrar os vencedores das últimas 5 corridas
-                      const winners = races.slice(-5).map((race) => ({
-                        ...race.Results[0],
-                        season: race.season,
-                        date: race.date,
-                      }));
-
-                      // Guardar os vencedores no estado
-                      setLastWinners(winners);
-                    });
-                }
-              });
-          }
-        });
+      axios.get(`${ergastBase}/current/next.json`).then((response) => {
+        const races = response.data.MRData.RaceTable.Races;
+        if (races.length > 0) {
+          handleRace(races[0], true);
+        } else {
+          // Off season — mostrar a última corrida
+          setNextRaceAvailability(false);
+          axios.get(`${ergastBase}/current/last.json`).then((res) => {
+            handleRace(res.data.MRData.RaceTable.Races[0], false);
+          });
+        }
+      });
     }
   }, [geojsonData, circuitLatitude, circuitLongitude]);
 
+  const year = nextCircuit ? new Date(nextCircuit[1]).getFullYear() : "";
+
+  // Linhas combinadas da tabela meteorológica (próxima + anteriores)
+  const weatherRows = [];
+  if (nextRaceWeatherData) {
+    weatherRows.push({
+      key: "next",
+      label: "Next race",
+      winner: "—",
+      ...nextRaceWeatherData,
+    });
+  }
+  if (previousRaceWeatherData) {
+    previousRaceWeatherData
+      .slice()
+      .sort((a, b) => new Date(b.date) - new Date(a.date))
+      .forEach((data) => {
+        const y = new Date(data.date).getFullYear();
+        const winner = lastWinners.find((w) => w.season === String(y));
+        weatherRows.push({
+          key: data.date,
+          label: String(y),
+          winner: winner
+            ? `${winner.Driver.givenName.charAt(0)}. ${winner.Driver.familyName}`
+            : "N/A",
+          ...data,
+        });
+      });
+  }
+
   return (
-    <Container fluid className="box m-0 p-4">
-      <Row className="nextrace-container">
-        <Col xs="12">
-          {nextRaceAvailability ? (
-            // Se houver uma próxima corrida definida
-            <div className="d-flex flex-row justify-content-between border-bottom mb-3">
-              <p className="d-flex text-white fs-2 fw-bold text-start">
-                NEXT RACE
-              </p>
-              {nextCircuit && (
-                <div className="d-flex text-white text-end fs-2">
-                  {new Date(nextCircuit[1]).getFullYear()} {nextCircuit[0]}{" "}
-                  Grand Prix
+    <section className="glass panel">
+      <div className="panel__head">
+        <div>
+          <span className="eyebrow">
+            {nextRaceAvailability ? "Next race" : "Off season · last race"}
+          </span>
+          <h1 className="nextrace__title">
+            {nextCircuit ? (
+              <>
+                {year} <em>{nextCircuit[0]}</em> Grand Prix
+              </>
+            ) : (
+              "Loading race…"
+            )}
+          </h1>
+        </div>
+      </div>
+
+      <div className="nextrace__grid">
+        {/* Left: key stats + countdown */}
+        <div className="stat-stack">
+          <div className="stat">
+            <span className="stat__label">📅 Date</span>
+            <span className="stat__value">
+              {nextCircuit ? nextCircuit[1] : "—"}
+            </span>
+          </div>
+          <div className="stat">
+            <span className="stat__label">🕙 Time</span>
+            <span className="stat__value">
+              {nextCircuit && nextCircuit[2]
+                ? nextCircuit[2].replace("Z", " UTC")
+                : "TBA"}
+            </span>
+          </div>
+
+          <span className="stat__label">⏳ Countdown</span>
+          {countdown && countdown.live ? (
+            <div className="countdown--live">🏁 Lights out!</div>
+          ) : countdown ? (
+            <div className="countdown">
+              {[
+                ["days", "Days"],
+                ["hours", "Hrs"],
+                ["minutes", "Min"],
+                ["seconds", "Sec"],
+              ].map(([k, label]) => (
+                <div className="countdown__seg" key={k}>
+                  <div className="countdown__num">
+                    {String(countdown[k]).padStart(2, "0")}
+                  </div>
+                  <span className="countdown__unit">{label}</span>
                 </div>
-              )}
+              ))}
             </div>
           ) : (
-            // Se não houver uma próxima corrida definida (off season)
-            <p className="text-white fs-2 mb-3 fw-bold text-start border-bottom">
-              OFF SEASON - CHECK OUT THE LAST RACE
-            </p>
+            <div className="text-dim">Calculating…</div>
           )}
-        </Col>
-      </Row>
-      <Row className="d-flex flex-row ps-0 ms-0 justify-content-between align-middle mt-2 w-100">
-        <Col
-          xs="12"
-          md="6"
-          lg="2"
-          className="fs-5 text-start d-flex flex-column text-white"
-        >
-          {nextCircuit && (
-            <Row>
-              <Col
-                xs="12"
-                className="text-center mb-1 d-flex align-items-center justify-content-center"
-              >
-                <div className="text-white fs-4">📅 Date: {nextCircuit[1]}</div>
-              </Col>
-              <Col
-                xs="12"
-                className="text-center mb-1 d-flex align-items-center justify-content-center"
-              >
-                <div className="text-white fs-4">
-                  🕙 Time: {nextCircuit[2] ? nextCircuit[2] : "TBA"}
-                </div>
-              </Col>
-              <Col
-                xs="12"
-                className="mb-1 d-flex align-items-center justify-content-center"
-              >
-                <div className="text-white mt-4 text-center w-100 fs-4">
-                  ⏳ Countdown{" "}
-                  <div className="fs-2 text-center">{countdown}</div>
-                </div>
-              </Col>
-            </Row>
-          )}
-        </Col>
-        <Col
-          xs="12"
-          md="6"
-          lg="4"
-          className="d-flex flex-column align-items-center"
-        >
-          <div
-            id="map"
-            className="w-100 rounded d-flex px-2 my-auto"
-            style={{ height: "20rem", maxHeight: "20rem", maxWidth: "100%" }}
-          ></div>
-        </Col>
-        <Col xs="12" lg="6" className="d-flex flex-column align-items-center">
-          {nextRaceWeatherData ? (
-            <div className="mb-3 w-100">
-              <div className="table-responsive">
-                <Table className="table-sm table-custom table-striped table-borderless caption-top">
-                  <caption className="text-white text-lg-center fs-4">
-                    Weather Forecast
-                  </caption>
-                  <thead>
-                    <tr className="fs-5">
-                      <th scope="col" className="px-1">
-                        <div className="d-flex flex-column align-items-center p-4">
-                          <span style={{ fontSize: "1em" }}>🏆</span>
-                          <span>Winner</span>
-                        </div>
-                      </th>
-                      <th scope="col" className="px-1">
-                        <div className="d-flex flex-column align-items-center p-4">
-                          <span style={{ fontSize: "1em" }}>📅</span>
-                          <span>Date</span>
-                        </div>
-                      </th>
-                      <th scope="col" className="px-1">
-                        <div className="d-flex flex-column align-items-center p-4">
-                          <span style={{ fontSize: "1em" }}>🌡️</span>
-                          <span>Temperature</span>
-                        </div>
-                      </th>
-                      <th scope="col" className="px-1">
-                        <div className="d-flex flex-column align-items-center p-4">
-                          <span style={{ fontSize: "1em" }}>💨</span>
-                          <span>Wind</span>
-                        </div>
-                      </th>
-                      <th scope="col" className="px-1">
-                        <div className="d-flex flex-column align-items-center p-4">
-                          <span style={{ fontSize: "1em" }}>📊</span>
-                          <span>Pressure</span>
-                        </div>
-                      </th>
-                      <th scope="col" className="px-1">
-                        <div className="d-flex flex-column align-items-center p-4">
-                          <span style={{ fontSize: "1em" }}>💧</span>
-                          <span>Precipitation</span>
-                        </div>
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr className="fs-4">
-                      <td className="text-white px-1"> - </td>
-                      <td className="text-white px-1"> Next race </td>
-                      <td className="text-white px-1">
-                        {nextRaceWeatherData.temperature === undefined
+        </div>
+
+        {/* Middle: circuit map (always rendered so Leaflet can mount) */}
+        <div className="nextrace__map-col">
+          <div id="map" className="map" />
+        </div>
+
+        {/* Right: weather */}
+        <div className="nextrace__weather-col">
+          <span className="eyebrow" style={{ marginBottom: 12 }}>
+            Weather
+          </span>
+          {weatherRows.length > 0 ? (
+            <table className="dtable">
+              <thead>
+                <tr>
+                  <th>When</th>
+                  <th>🏆 Winner</th>
+                  <th>🌡️ Temp</th>
+                  <th>💨 Wind</th>
+                  <th>💧 Rain</th>
+                </tr>
+              </thead>
+              <tbody>
+                {weatherRows.map((row) => {
+                  const label = precipLabel(row.precipitationIntensity);
+                  return (
+                    <tr key={row.key}>
+                      <td className="strong">{row.label}</td>
+                      <td>{row.winner}</td>
+                      <td className="num">
+                        {row.temperature === undefined
                           ? "?"
-                          : nextRaceWeatherData.temperature.toFixed(1)}{" "}
-                        ºC
+                          : `${row.temperature.toFixed(1)}°C`}
                       </td>
-                      <td className="text-white px-1">
-                        {nextRaceWeatherData.windSpeed === undefined
+                      <td className="num">
+                        {row.windSpeed === undefined
                           ? "?"
-                          : nextRaceWeatherData.windSpeed.toFixed(1)}{" "}
-                        m/s
+                          : `${row.windSpeed.toFixed(0)} km/h`}
                       </td>
-                      <td className="text-white px-1">
-                        {nextRaceWeatherData.pressure === undefined
-                          ? "?"
-                          : (nextRaceWeatherData.pressure / 100).toFixed(
-                              2
-                            )}{" "}
-                        hPa
-                      </td>
-                      <td className="text-white px-1">
-                        {nextRaceWeatherData.precipitationIntensity ===
-                        undefined
-                          ? "?"
-                          : nextRaceWeatherData.precipitationIntensity === 0
-                          ? "None"
-                          : nextRaceWeatherData.precipitationIntensity < 0.05
-                          ? "Very Low"
-                          : nextRaceWeatherData.precipitationIntensity < 0.1
-                          ? "Low"
-                          : nextRaceWeatherData.precipitationIntensity < 0.4
-                          ? "Medium"
-                          : "High"}
+                      <td>
+                        <span
+                          className={`pill ${
+                            label === "None" ? "pill--none" : ""
+                          } ${isWet(label) ? "pill--wet" : ""}`}
+                        >
+                          {label}
+                        </span>
                       </td>
                     </tr>
-                    {previousRaceWeatherData &&
-                      previousRaceWeatherData
-                        .sort((a, b) => new Date(b.date) - new Date(a.date))
-                        .map((data, index) => {
-                          // Transformar a data em ano
-                          const year = new Date(data.date).getFullYear();
-                          // Obter o vencedor da corrida desse ano
-                          const winner = lastWinners.find(
-                            (winner) => winner.season === String(year)
-                          );
-                          // Obter o nome do vencedor da corrida desse ano
-                          const winnerName = winner
-                            ? `${winner.Driver.givenName.charAt(0)}. ${
-                                winner.Driver.familyName
-                              }`
-                            : "N/A";
-
-                          // Formatar os dados para serem apresentados (obrigado AI)
-                          // Formatar a temperatura para celsius
-                          const temperature = `${data.temperature.toFixed(
-                            1
-                          )} ºC`;
-                          // Formatar a velocidade do vento para m/s
-                          const windSpeed = `${data.windSpeed.toFixed(1)} m/s`;
-                          // Formatar a intensidade da precipitação para Low, Medium ou High
-                          const precipitationIntensity =
-                            data.precipitationIntensity === 0
-                              ? "None"
-                              : data.precipitationIntensity < 0.05
-                              ? "Very Low"
-                              : data.precipitationIntensity < 0.1
-                              ? "Low"
-                              : data.precipitationIntensity < 0.4
-                              ? "Medium"
-                              : "High";
-                          // Formatar a pressão para hPa
-                          const pressure = `${(data.pressure / 100).toFixed(
-                            2
-                          )} hPa`;
-
-                          return (
-                            <tr key={index} className="fs-4">
-                              <td className="text-white px-1">{winnerName}</td>
-                              <td className="text-white px-1">{year}</td>
-                              <td className="text-white px-1">{temperature}</td>
-                              <td className="text-white px-1">{pressure}</td>
-                              <td className="text-white px-1">
-                                {precipitationIntensity}
-                              </td>
-                              <td className="text-white px-1">{windSpeed}</td>
-                            </tr>
-                          );
-                        })}
-                  </tbody>
-                </Table>
-              </div>
-            </div>
+                  );
+                })}
+              </tbody>
+            </table>
           ) : (
-            <div className="mb-3 w-100">
-              <p className="text-danger">
-                Sorry! Next race's weather forecast still isn't available. Take
-                a look at the weather from the last 5 races:
+            <div className="state">
+              <p>
+                Weather forecast isn't available right now (needs the weather API
+                key).
               </p>
-              <div className="table-responsive">
-                <Table className="table-sm table-custom table-striped table-borderless caption-top">
-                  <caption className="text-white text-lg-center fs-4">
-                    Weather Forecast
-                  </caption>
-                  <thead>
-                    <tr className="fs-5">
-                      <th scope="col" className="px-1">
-                        Year
-                      </th>
-                      <th scope="col" className="px-1">
-                        🏆 Winner
-                      </th>
-                      <th scope="col" className="px-1">
-                        🌡️ Temperature
-                      </th>
-                      <th scope="col" className="px-1">
-                        📊 Pressure
-                      </th>
-                      <th scope="col" className="px-1">
-                        💧 Precipitation Intensity
-                      </th>
-                      <th scope="col" className="px-1">
-                        💨 Wind Speed
-                      </th>
-                    </tr>
-                  </thead>
-                  {previousRaceWeatherData ? (
-                    <tbody>
-                      {previousRaceWeatherData
-                        .sort((a, b) => new Date(b.date) - new Date(a.date))
-                        .map((data, index) => {
-                          // Transformar a data em ano
-                          const year = new Date(data.date).getFullYear();
-                          // Obter o vencedor da corrida desse ano
-                          const winner = lastWinners.find(
-                            (winner) => winner.season === String(year)
-                          );
-                          // Obter o nome do vencedor da corrida desse ano
-                          const winnerName = winner
-                            ? `${winner.Driver.givenName} ${winner.Driver.familyName}`
-                            : "N/A";
-
-                          // Formatar os dados para serem apresentados (obrigado AI)
-                          // Formatar a temperatura para celsius
-                          const temperature = `${data.temperature.toFixed(
-                            1
-                          )} ºC`;
-                          // Formatar a velocidade do vento para m/s
-                          const windSpeed = `${data.windSpeed.toFixed(1)} m/s`;
-                          // Formatar a intensidade da precipitação para Low, Medium ou High
-                          const precipitationIntensity =
-                            data.precipitationIntensity === 0
-                              ? "None"
-                              : data.precipitationIntensity < 0.05
-                              ? "Very Low"
-                              : data.precipitationIntensity < 0.1
-                              ? "Low"
-                              : data.precipitationIntensity < 0.4
-                              ? "Medium"
-                              : "High";
-                          // Formatar a pressão para hPa
-                          const pressure = `${(data.pressure / 100).toFixed(
-                            2
-                          )} hPa`;
-
-                          return (
-                            <tr key={index} className="fs-4">
-                              <td className="text-white px-1">{year}</td>
-                              <td className="text-white px-1">{winnerName}</td>
-                              <td className="text-white px-1">{temperature}</td>
-                              <td className="text-white px-1">{pressure}</td>
-                              <td className="text-white px-1">
-                                {precipitationIntensity}
-                              </td>
-                              <td className="text-white px-1">{windSpeed}</td>
-                            </tr>
-                          );
-                        })}
-                    </tbody>
-                  ) : (
-                    <tbody>
-                      <tr>
-                        <td>Loading...</td>
-                      </tr>
-                    </tbody>
-                  )}
-                </Table>
-              </div>
             </div>
           )}
-        </Col>
-      </Row>
-    </Container>
+        </div>
+      </div>
+    </section>
   );
 };
 

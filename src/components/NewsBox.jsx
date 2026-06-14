@@ -4,6 +4,7 @@ import axios from "axios";
 const NewsBox = () => {
   const [news, setNews] = useState([]);
   const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(true);
   const apiKey = import.meta.env.REACT_APP_NEWS_API_KEY;
 
   useEffect(() => {
@@ -12,45 +13,66 @@ const NewsBox = () => {
         const response = await axios.get(
           `https://api.webz.io/newsApiLite?token=${apiKey}&q=site%3Aformula1.com`
         );
-        setNews(response.data.posts);
+        setNews(response.data.posts || []);
       } catch (err) {
-        setError("Failed to load news. This may be due to News API's policies restricting access outside localhost.");
+        setError(
+          "Couldn't load news — the provider restricts access outside localhost on the free plan."
+        );
+      } finally {
+        setLoading(false);
       }
     };
 
     fetchNews();
-  }, []);
+  }, [apiKey]);
 
   return (
-    <div className="box max-vh-80 p-4 mt-4 my-lg-0 text-start">
-      <p className="text-white fs-2 mb-3 fw-bold text-start border-bottom">
-        LATEST NEWS
-      </p>
-      <div className="news-container">
-        {error ? (
-          <div className="text-white">
-            <p>{error}</p>
-          </div>
-        ) : (
-          news.slice(0, 10).map((post, index) => (
-            <div key={index} className="news-item max-vh-60v2 mt-4">
-              <a href={post.url} className="text-white py-2 text-center">
-                <img
-                  src={post.thread.main_image}
-                  alt={post.title}
-                  className="img-fluid"
-                />
-                <div>
-                  <h2 className="fw-bold fs-5 text-white py-1">
-                    {post.title}
-                  </h2>
-                </div>
-              </a>
-            </div>
-          ))
-        )}
+    <section className="glass panel">
+      <div className="panel__head">
+        <div>
+          <span className="eyebrow">Headlines</span>
+          <h2 className="panel__title">Latest News</h2>
+        </div>
       </div>
-    </div>
+
+      {loading ? (
+        <div className="state">
+          <div className="spinner" />
+          <p>Loading news…</p>
+        </div>
+      ) : error ? (
+        <div className="state">
+          <h3>News unavailable</h3>
+          <p>{error}</p>
+        </div>
+      ) : news.length === 0 ? (
+        <div className="state">
+          <p>No recent articles found.</p>
+        </div>
+      ) : (
+        <div className="panel__scroll">
+          <div className="news">
+            {news.slice(0, 10).map((post, index) => (
+              <a
+                key={index}
+                href={post.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="news__item"
+              >
+                <img
+                  src={post.thread?.main_image}
+                  alt=""
+                  className="news__thumb"
+                  loading="lazy"
+                />
+                <h3 className="news__title">{post.title}</h3>
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+    </section>
   );
 };
 

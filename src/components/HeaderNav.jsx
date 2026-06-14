@@ -1,61 +1,59 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import {
-  Navbar,
-  NavbarToggler,
-  Collapse,
-  Nav,
-  NavItem,
-  UncontrolledDropdown,
-  DropdownToggle,
-  DropdownMenu,
-  DropdownItem,
-} from "reactstrap";
 import { useAuth } from "./AuthProvider";
-import { FaExclamationCircle } from "react-icons/fa";
+import { FaBars, FaXmark } from "react-icons/fa6";
 
 const HeaderNav = () => {
-  const [isOpen, setIsOpen] = useState(false);
+  const [open, setOpen] = useState(false);
   const { user, signOutUser } = useAuth();
 
-  const toggle = () => setIsOpen(!isOpen);
+  const close = () => setOpen(false);
+
   return (
-    <div className="px-4">
-      <Navbar expand="md" className="rounded-bottom navBar">
-        <Link to="/" className="remove-link-styles">
-          <div className="ms-3 text-white navbar-brand">
-            F1 Dash
-          </div>
+    <header className="nav">
+      <div className={`nav__inner glass ${open ? "is-open" : ""}`}>
+        <Link to="/" className="brand" onClick={close}>
+          <span className="brand__mark">F1</span>
+          Dash
         </Link>
-        <NavbarToggler onClick={toggle} className="custom-toggler" />
-        <Collapse isOpen={isOpen} navbar>
-          <Nav className="me-auto" navbar>
-            <NavItem>
-              <Link to="/favorites" className="remove-link-styles">
-                <div>Favorites</div>
-              </Link>
-            </NavItem>
-          </Nav>
+
+        <button
+          className="nav__toggle"
+          aria-label="Toggle navigation"
+          aria-expanded={open}
+          onClick={() => setOpen((o) => !o)}
+        >
+          {open ? <FaXmark size={18} /> : <FaBars size={18} />}
+        </button>
+
+        <nav className="nav__menu">
+          <Link to="/favorites" className="nav__link" onClick={close}>
+            Favorites
+          </Link>
+
+          <span className="nav__spacer" />
+
           {user ? (
-            <div>
-              <UncontrolledDropdown nav inNavbar>
-                <DropdownToggle nav caret>
-                  <div className="me-4">{user.email}</div>
-                </DropdownToggle>
-                <DropdownMenu right>
-                  <DropdownItem onClick={() => signOutUser()}>Logout</DropdownItem>
-                </DropdownMenu>
-              </UncontrolledDropdown>
+            <div className="nav__user-wrap">
+              <span className="nav__user">{user.email || "Signed in"}</span>
+              <button
+                className="btn btn--ghost"
+                onClick={() => {
+                  signOutUser();
+                  close();
+                }}
+              >
+                Logout
+              </button>
             </div>
           ) : (
-            <Link to="/login" className="remove-link-styles">
-              <div className="me-4">Login</div>
+            <Link to="/login" className="btn btn--primary" onClick={close}>
+              Sign in
             </Link>
           )}
-        </Collapse>
-      </Navbar>
-      <p className="p-2 rounded-bottom navBar"><FaExclamationCircle size={24} color="#FF6347" />  This app relies on external APIs, and I have no control over their availability. They may be down for reasons beyond my control.</p>
-    </div>
+        </nav>
+      </div>
+    </header>
   );
 };
 

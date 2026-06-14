@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { Container, Row, Col } from 'reactstrap';
 import he from "he";
 
 const VideosBox = () => {
   const [videos, setVideos] = useState([]);
   const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchVideos = async () => {
@@ -25,18 +25,19 @@ const VideosBox = () => {
           }
         );
 
-        // Para remover os vídeos shorts dos resultados, verificar se o título tem emojis ou se tem a hashtag #shorts
+        // Remover shorts: filtrar títulos com emojis ou a hashtag #shorts
         const filterNoShortsVideos = response.data.items.filter((video) => {
           const title = video.snippet.title;
           const hasEmoji = title.match(/[\p{Extended_Pictographic}]/u);
           const hasShortsHashtag = title.toLowerCase().includes("#shorts");
-
           return !hasEmoji && !hasShortsHashtag;
         });
 
         setVideos(filterNoShortsVideos.slice(0, 6));
       } catch (err) {
-        setError("Failed to load videos. Please try again later.");
+        setError("Couldn't load videos. Please try again later.");
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -44,44 +45,51 @@ const VideosBox = () => {
   }, []);
 
   return (
-    <Container fluid className="box p-4 mb-4">
-      <Row className="align-items-start">
-        <Col>
-          <p className="text-white fs-2 mb-2 fw-bold text-start border-bottom">
-            LATEST VIDEOS
-          </p>
-        </Col>
-      </Row>
-      <Row>
-        {error ? (
-          <Col>
-            <p>{error}</p>
-          </Col>
-        ) : (
-          videos.map((video) => (
-            <Col xs="12" sm="6" md="4" lg="2" key={video.id.videoId} className="mb-4">
-              <div className="px-2">
-                <a
-                  target="_blank"
-                  href={`https://www.youtube.com/watch?v=${video.id.videoId}`}
-                  rel="noopener noreferrer"
-                  className="p-0"
-                >
-                  <div className="video-item">
-                    <img
-                      src={video.snippet.thumbnails.default.url}
-                      alt={video.snippet.title}
-                      className="img-fluid"
-                    />
-                  </div>
-                  <p className="video-title pt-2">{he.decode(video.snippet.title)}</p>
-                </a>
+    <section className="glass panel">
+      <div className="panel__head">
+        <div>
+          <span className="eyebrow">From the paddock</span>
+          <h2 className="panel__title">Latest Videos</h2>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="state">
+          <div className="spinner" />
+          <p>Loading videos…</p>
+        </div>
+      ) : error ? (
+        <div className="state">
+          <h3>Videos unavailable</h3>
+          <p>{error}</p>
+        </div>
+      ) : videos.length === 0 ? (
+        <div className="state">
+          <p>No recent videos found.</p>
+        </div>
+      ) : (
+        <div className="videos">
+          {videos.map((video) => (
+            <a
+              key={video.id.videoId}
+              target="_blank"
+              rel="noopener noreferrer"
+              href={`https://www.youtube.com/watch?v=${video.id.videoId}`}
+              className="video"
+            >
+              <div className="video__thumb">
+                <img
+                  src={video.snippet.thumbnails.high?.url || video.snippet.thumbnails.default.url}
+                  alt=""
+                  loading="lazy"
+                />
               </div>
-            </Col>
-          ))
-        )}
-      </Row>
-    </Container>
+              <p className="video__title">{he.decode(video.snippet.title)}</p>
+            </a>
+          ))}
+        </div>
+      )}
+    </section>
   );
 };
 

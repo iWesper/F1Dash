@@ -5,16 +5,10 @@ import { AuthProvider } from "./components/AuthProvider";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "../src/css/styles.css";
 import Dashboard from "./components/Dashboard";
-import {
-  BrowserRouter as Router,
-  Route,
-  Routes,
-  BrowserRouter,
-} from "react-router-dom";
+import { BrowserRouter, Route, Routes } from "react-router-dom";
 import Favorites from "./components/Favorites";
 import HeaderNav from "./components/HeaderNav";
 import ErrorBoundary from "./components/ErrorBoundary";
-import { Alert } from "reactstrap";
 
 function App() {
   const [alert, setAlert] = useState({
@@ -28,26 +22,33 @@ function App() {
       const timer = setTimeout(() => {
         setAlert((prevAlert) => ({ ...prevAlert, visible: false }));
       }, 3000); // 3000ms = 3s
-
-      return () => clearTimeout(timer); // limpar o timer
+      return () => clearTimeout(timer);
     }
   }, [alert.visible]);
 
   return (
     <BrowserRouter>
       <AuthProvider>
-        <div className="App gradient-custom w-100 h-100">
+        {/* Dark aurora backdrop (fixed, behind everything) */}
+        <div className="aurora" aria-hidden="true">
+          <span className="aurora__blob aurora__blob--1" />
+          <span className="aurora__blob aurora__blob--2" />
+          <span className="aurora__blob aurora__blob--3" />
+        </div>
+
+        <div className="app-shell App">
           <HeaderNav />
-          <Alert
-            color={alert.color}
-            isOpen={alert.visible}
-            toggle={() => setAlert({ ...alert, visible: false })}
-            className="position-fixed top-0 start-50 translate-middle-x"
-            style={{ zIndex: 9999 }}
-            fade
-          >
-            {alert.message}
-          </Alert>
+
+          {alert.visible && (
+            <div
+              className={`toast glass toast--${alert.color}`}
+              role="status"
+              onClick={() => setAlert({ ...alert, visible: false })}
+            >
+              {alert.message}
+            </div>
+          )}
+
           <ErrorBoundary label="this page">
             <Routes>
               <Route path="/" index element={<Dashboard setAlert={setAlert} />} />
@@ -55,8 +56,6 @@ function App() {
               <Route path="/favorites" element={<Favorites />} />
             </Routes>
           </ErrorBoundary>
-          {/* Linha abaixo serve para dar lock à app e apenas permitir acesso quando logged in */}
-          {/* {isLoggedIn ? <h1>Logged in</h1> : <Auth />} */}
         </div>
       </AuthProvider>
     </BrowserRouter>
