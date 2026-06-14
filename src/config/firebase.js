@@ -1,7 +1,7 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
-import { getAnalytics } from "firebase/analytics";
+import { getAnalytics, isSupported } from "firebase/analytics";
 import {getAuth, GoogleAuthProvider} from "firebase/auth";
 
 // TODO: Add SDKs for Firebase products that you want to use
@@ -10,7 +10,7 @@ import {getAuth, GoogleAuthProvider} from "firebase/auth";
 // Your web app's Firebase configuration
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
+  apiKey: import.meta.env.REACT_APP_FIREBASE_API_KEY,
   authDomain: "project-party-6d703.firebaseapp.com",
   projectId: "project-party-6d703",
   storageBucket: "project-party-6d703.appspot.com",
@@ -21,7 +21,13 @@ const firebaseConfig = {
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
+// Inicializar Analytics apenas se for suportado e se houver configuração válida,
+// para a app não rebentar no arranque (ex.: sem .env ou ambientes sem suporte).
+isSupported()
+  .then((supported) => {
+    if (supported && firebaseConfig.apiKey) getAnalytics(app);
+  })
+  .catch(() => {});
 export const db = getFirestore(app);
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();

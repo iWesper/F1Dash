@@ -4,8 +4,8 @@ import "../css/styles.css";
 import { Form, Col, Container, Row, Card, CardBody } from "reactstrap";
 import { Login } from "./Login";
 import { SignUp } from "./SignUp";
-// Logotipo
-import { ReactComponent as Logo } from "../imgs/logo.svg";
+// Logotipo (vite-plugin-svgr: ?react devolve o SVG como componente React)
+import Logo from "../imgs/logo.svg?react";
 
 export const Auth = () => {
   const [register, setRegister] = useState(false);

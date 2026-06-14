@@ -23,7 +23,7 @@ const NextRaceBox = () => {
     nextRaceDate,
     previousRaceDates
   ) => {
-    const apiKey = process.env.REACT_APP_WEATHER_API_KEY;
+    const apiKey = import.meta.env.REACT_APP_WEATHER_API_KEY;
     const nextRaceWeatherData = [];
     const previousRaceWeatherData = [];
 
@@ -231,8 +231,9 @@ const NextRaceBox = () => {
 
   // Corre quando o geojson é carregado e sempre que o geojsonData é alterado
   useEffect(() => {
-    // Utilizar uma proxy para contornar o erro de CORS
-    const corsProxy = "https://corsproxy.io/?";
+    // Jolpica é o sucessor compatível da API Ergast (desativada no início de 2025).
+    // Suporta CORS diretamente, por isso já não é necessária uma proxy.
+    const ergastBase = "https://api.jolpi.ca/ergast/f1";
     // Se o geojson foi carregado
     if (geojsonData) {
       // Se o mapa já existir, remover
@@ -244,16 +245,13 @@ const NextRaceBox = () => {
       mapRef.current = L.map("map").setView([51.505, -0.09], 13);
 
       // Adicionar a camada do OpenStreetMap
-      L.tileLayer(
-        `${corsProxy}https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png`,
-        {
-          maxZoom: 19,
-        }
-      ).addTo(mapRef.current);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+      }).addTo(mapRef.current);
 
       // Obter a próxima corrida
       axios
-        .get(`${corsProxy}https://ergast.com/api/f1/current/next.json`)
+        .get(`${ergastBase}/current/next.json`)
         .then((response) => {
           // Se houver uma próxima corrida já definida
           if (response.data.MRData.RaceTable.Races.length > 0) {
@@ -292,9 +290,7 @@ const NextRaceBox = () => {
 
               // Obter os vencedores de todas as corridas no circuito
               axios
-                .get(
-                  `${corsProxy}https://ergast.com/api/f1/circuits/${circuitID}/results/1.json`
-                )
+                .get(`${ergastBase}/circuits/${circuitID}/results/1.json`)
                 .then((response) => {
                   // Guardar as corridas no estado
                   const races = response.data.MRData.RaceTable.Races;
@@ -315,7 +311,7 @@ const NextRaceBox = () => {
             setNextRaceAvailability(false);
             // Obter o circuito da última corrida
             axios
-              .get(`${corsProxy}https://ergast.com/api/f1/current/last.json`)
+              .get(`${ergastBase}/current/last.json`)
               .then((response) => {
                 const circuitName =
                   response.data.MRData.RaceTable.Races[0].Circuit.circuitName;
@@ -350,9 +346,7 @@ const NextRaceBox = () => {
                   // Obter os vencedores de todas as corridas no circuito
                   // Ao implementar a API de meteorologia, esta call da API foi aproveitada para guardar as datas das corridas anteriores no mesmo circuito
                   axios
-                    .get(
-                      `${corsProxy}https://ergast.com/api/f1/circuits/${circuitID}/results/1.json`
-                    )
+                    .get(`${ergastBase}/circuits/${circuitID}/results/1.json`)
                     .then((response) => {
                       // Guardar as corridas no estado
                       const races = response.data.MRData.RaceTable.Races;
@@ -366,7 +360,6 @@ const NextRaceBox = () => {
 
                       // Guardar os vencedores no estado
                       setLastWinners(winners);
-                      console.log(lastWinners);
                     });
                 }
               });

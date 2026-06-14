@@ -16,7 +16,7 @@ function Driver({ driverId }) {
 
         while (true) {
           const response = await axios.get(
-            `https://ergast.com/api/f1/drivers/${driverId}/results.json?limit=${limit}&offset=${offset}`
+            `https://api.jolpi.ca/ergast/f1/drivers/${driverId}/results.json?limit=${limit}&offset=${offset}`
           );
           races = races.concat(response.data.MRData.RaceTable.Races);
           if (response.data.MRData.total > races.length) {
@@ -29,11 +29,9 @@ function Driver({ driverId }) {
         // Obter os dados do piloto da primeira corrida da temporada atual
         const driverInfo = races[0].Results[0].Driver;
 
-        // Utilizar uma proxy para contornar o erro de CORS
-        const corsProxy = "https://corsproxy.io/?";
-        // Fazer um GET request à API da Wikipedia para obter a imagem do piloto
+        // A API da Wikipedia suporta CORS anónimo através de origin=* (sem proxy).
         const wikipediaResponse = await axios.get(
-          `${corsProxy}https://en.wikipedia.org/w/api.php?action=query&prop=pageimages&format=json&piprop=original&titles=${driverInfo.givenName}_${driverInfo.familyName}`
+          `https://en.wikipedia.org/w/api.php?action=query&prop=pageimages&format=json&piprop=original&origin=*&titles=${driverInfo.givenName}_${driverInfo.familyName}`
         );
         const pages = wikipediaResponse.data.query.pages;
         const pageID = Object.keys(pages)[0];
@@ -42,9 +40,14 @@ function Driver({ driverId }) {
         // Adicionar a imagem ao objeto driverInfo
         setDriverInfo({ ...driverInfo, imageUrl });
 
-        // Calcular as estatísticas da temporada atual e da carreira
+        // Calcular as estatísticas da temporada atual e da carreira.
+        // Usar a temporada mais recente presente nos resultados (em vez de um ano fixo).
+        const latestSeason = races.reduce(
+          (max, race) => (Number(race.season) > Number(max) ? race.season : max),
+          races[0].season
+        );
         setCurrentSeasonData(
-          calculateStats(races.filter((race) => race.season === "2023"))
+          calculateStats(races.filter((race) => race.season === latestSeason))
         );
         setCareerData(calculateStats(races));
       } catch (error) {

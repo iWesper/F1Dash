@@ -9,7 +9,7 @@ const Standings = () => {
   // Ao carregar na página, faz um GET request à API e guarda os dados no array driverStandings
   useEffect(() => {
     axios
-      .get("https://ergast.com/api/f1/current/driverStandings.json")
+      .get("https://api.jolpi.ca/ergast/f1/current/driverStandings.json")
       .then((response) => {
         setDriverStandings(
           response.data.MRData.StandingsTable.StandingsLists[0].DriverStandings

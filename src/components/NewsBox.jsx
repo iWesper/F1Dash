@@ -4,7 +4,7 @@ import axios from "axios";
 const NewsBox = () => {
   const [news, setNews] = useState([]);
   const [error, setError] = useState(null);
-  const apiKey = process.env.REACT_APP_NEWS_API_KEY;
+  const apiKey = import.meta.env.REACT_APP_NEWS_API_KEY;
 
   useEffect(() => {
     const fetchNews = async () => {

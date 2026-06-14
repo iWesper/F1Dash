@@ -132,10 +132,9 @@ const StandingsBox = ({ setAlert }) => {
 
   // Ao carregar na página, faz um GET request à API e guarda os dados no array driverStandings
   useEffect(() => {
-    // Utilizar uma proxy para contornar o erro de CORS
-    const corsProxy = "https://corsproxy.io/?";
+    // Jolpica é o sucessor compatível da API Ergast e suporta CORS diretamente.
     axios
-      .get(`${corsProxy}https://ergast.com/api/f1/current/driverStandings.json`)
+      .get("https://api.jolpi.ca/ergast/f1/current/driverStandings.json")
       .then((response) => {
         setApiIsDown(false);
         setDriverStandings(

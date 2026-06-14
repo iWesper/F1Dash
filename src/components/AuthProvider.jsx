@@ -1,8 +1,9 @@
-import React, { createContext, useState, useContext } from "react";
+import React, { createContext, useState, useContext, useEffect } from "react";
 import {
   createUserWithEmailAndPassword,
   signInWithPopup,
   signInWithEmailAndPassword,
+  onAuthStateChanged,
   signOut,
 } from "firebase/auth";
 import { auth, googleProvider } from "../config/firebase";
@@ -12,6 +13,16 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   // Determinar se o user está logged in ou não
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  // Manter o estado de autenticação após refresh: o Firebase persiste a sessão
+  // e este listener repõe o user quando a app volta a montar.
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setIsLoggedIn(!!currentUser);
+    });
+    return unsubscribe;
+  }, []);
 
   // Log in com a conta google
   const signInWithGoogle = async () => {
@@ -35,10 +46,9 @@ export function AuthProvider({ children }) {
     }
   };
 
-  // Login com email e password
+  // Login com email e password (API modular do Firebase v9+)
   const signIn = (email, password) => {
-    return auth
-      .signInWithEmailAndPassword(email, password)
+    return signInWithEmailAndPassword(auth, email, password)
       .then((userCredential) => {
         // Se o login for bem sucedido, setUser e setIsLoggedIn
         setUser(userCredential.user);

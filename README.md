@@ -27,6 +27,7 @@ You can view the live application at [f1dash.vercel.app](https://f1dash.vercel.a
 
 ## Technologies Used
 
+- **Build tool:** Vite
 - **Frontend:** React, Axios
 - **Styling:** Reactstrap, Bootstrap
 - **Mapping:** Leaflet, geoJSON
@@ -34,7 +35,7 @@ You can view the live application at [f1dash.vercel.app](https://f1dash.vercel.a
 
 ## APIs Used
 
-- **Ergast F1 API:** Access historical data related to Formula 1.
+- **Jolpica F1 API:** Drop-in successor to the (now shut down) Ergast API for current standings, race calendar, and historical results.
 - **WorldWeatherOnline:** Fetch weather data for race locations.
 - **News API:** Retrieve the latest news articles about Formula 1.
 - **YouTube Data API:** Display recent videos from the official Formula 1 channel.
@@ -63,9 +64,15 @@ To run this project locally, follow these steps:
    REACT_APP_YOUTUBE_API_KEY=your_youtube_api_key
    REACT_APP_FIREBASE_API_KEY=your_firebase_api_key
    ```
+   > The `REACT_APP_` prefix is kept for backwards compatibility; Vite is configured to read it.
 5. Start the development server:
    ```bash
-   npm start
+   npm run dev
+   ```
+6. Build for production:
+   ```bash
+   npm run build      # outputs to dist/
+   npm run preview    # preview the production build locally
    ```
 
 ## Usage
