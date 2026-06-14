@@ -9,6 +9,11 @@
   --bg: #06070c;
   --bg-2: #0a0c14;
 
+  /* Tell the UA to render scrollbars, form controls and — crucially on
+     mobile — the overscroll/canvas area behind the page using dark
+     defaults, so no white band shows behind the browser chrome. */
+  color-scheme: dark;
+
   /* Brand */
   --f1-red: #ff2b39;
   --f1-red-deep: #d2001f;
@@ -52,6 +57,12 @@ html,
 body,
 #root {
   height: 100%;
+}
+
+/* The browser paints the overscroll / canvas area (including the strip
+   behind mobile browser chrome) from the root element, not body. */
+html {
+  background: var(--bg);
 }
 
 body {
