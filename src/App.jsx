@@ -7,6 +7,7 @@ import "../src/css/styles.css";
 import Dashboard from "./components/Dashboard";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import Favorites from "./components/Favorites";
+import Calendar from "./components/Calendar";
 import DriverPage from "./components/DriverPage";
 import HeaderNav from "./components/HeaderNav";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -55,6 +56,7 @@ function App() {
               <Route path="/" index element={<Dashboard setAlert={setAlert} />} />
               <Route path="/login" element={<Auth />} />
               <Route path="/favorites" element={<Favorites />} />
+              <Route path="/calendar" element={<Calendar />} />
               <Route path="/driver/:driverId" element={<DriverPage />} />
             </Routes>
           </ErrorBoundary>

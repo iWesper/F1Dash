@@ -27,6 +27,9 @@ const HeaderNav = () => {
         </button>
 
         <nav className="nav__menu">
+          <Link to="/calendar" className="nav__link" onClick={close}>
+            Calendar
+          </Link>
           <Link to="/favorites" className="nav__link" onClick={close}>
             Favorites
           </Link>
