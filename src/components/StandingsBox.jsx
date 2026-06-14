@@ -207,12 +207,14 @@ const StandingsBox = ({ setAlert }) => {
                       {driver.Driver.givenName.charAt(0)}. {driver.Driver.familyName}
                     </td>
                     <td>
-                      <Flag
-                        code={nationalityToCode[driver.Driver.nationality]}
-                        className="flag"
-                        fallback={null}
-                      />
-                      {driver.Driver.nationality}
+                      <span className="cell-inline">
+                        <Flag
+                          code={nationalityToCode[driver.Driver.nationality]}
+                          className="flag"
+                          fallback={null}
+                        />
+                        {driver.Driver.nationality}
+                      </span>
                     </td>
                     <td>{driver.Constructors[0].name}</td>
                     <td className="num">{driver.points}</td>

@@ -438,6 +438,7 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--text-faint);
   padding: 10px 12px;
   z-index: 2;
+  white-space: nowrap;
 }
 .dtable tbody td {
   padding: 11px 12px;
@@ -456,6 +457,15 @@ h1, h2, h3, h4, h5, h6 {
   font-variant-numeric: tabular-nums;
   color: var(--text);
   font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Keeps an inline icon/flag glued to the text beside it so a narrow cell
+   can't break them onto separate lines. */
+.cell-inline {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
 }
 .dtable .strong {
   color: var(--text);
