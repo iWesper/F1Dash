@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import Flag from "react-world-flags";
+// react-world-flags é CommonJS e, sob o interop ESM do Vite, o export default
+// vem encapsulado em { default: Componente }. Desembrulhar para obter o componente.
+import FlagModule from "react-world-flags";
 import axios from "axios";
+
+const Flag = FlagModule.default || FlagModule;
 import {
   addFavoriteDriver,
   removeFavoriteDriver,
