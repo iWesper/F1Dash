@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
-import { Container, Row, Col } from "reactstrap";
 import axios from "axios";
 
 function Driver({ driverId }) {
   const [currentSeasonData, setCurrentSeasonData] = useState(null);
   const [careerData, setCareerData] = useState(null);
   const [driverInfo, setDriverInfo] = useState(null);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     const fetchDriverData = async () => {
@@ -30,12 +30,17 @@ function Driver({ driverId }) {
         const driverInfo = races[0].Results[0].Driver;
 
         // A API da Wikipedia suporta CORS anónimo através de origin=* (sem proxy).
-        const wikipediaResponse = await axios.get(
-          `https://en.wikipedia.org/w/api.php?action=query&prop=pageimages&format=json&piprop=original&origin=*&titles=${driverInfo.givenName}_${driverInfo.familyName}`
-        );
-        const pages = wikipediaResponse.data.query.pages;
-        const pageID = Object.keys(pages)[0];
-        const imageUrl = pages[pageID].original.source;
+        let imageUrl = null;
+        try {
+          const wikipediaResponse = await axios.get(
+            `https://en.wikipedia.org/w/api.php?action=query&prop=pageimages&format=json&piprop=original&origin=*&titles=${driverInfo.givenName}_${driverInfo.familyName}`
+          );
+          const pages = wikipediaResponse.data.query.pages;
+          const pageID = Object.keys(pages)[0];
+          imageUrl = pages[pageID]?.original?.source ?? null;
+        } catch {
+          // Sem imagem — o card mostra um placeholder.
+        }
 
         // Adicionar a imagem ao objeto driverInfo
         setDriverInfo({ ...driverInfo, imageUrl });
@@ -50,8 +55,9 @@ function Driver({ driverId }) {
           calculateStats(races.filter((race) => race.season === latestSeason))
         );
         setCareerData(calculateStats(races));
-      } catch (error) {
-        console.error(error);
+      } catch (err) {
+        console.error(err);
+        setError(true);
       }
     };
 
@@ -60,7 +66,6 @@ function Driver({ driverId }) {
 
   // Função que calcula as estatísticas do piloto
   const calculateStats = (races) => {
-    // Inicializar o objeto stats com os valores iniciais
     let stats = {
       season: races[0].season,
       races: races.length,
@@ -71,94 +76,101 @@ function Driver({ driverId }) {
       dnfs: 0,
     };
 
-    // Para cada corrida, adicionar os valores às estatísticas
     races.forEach((race) => {
-      // Adicionar os pontos da corrida ao total de pontos
-      stats.points += parseInt(race.Results[0].points);
-      // Verificar se o piloto ganhou, ficou no pódio, se fez DNF ou se fez pole position
-      if (race.Results[0].position === "1") stats.wins++;
-      if (race.Results[0].position <= "3") stats.podiums++;
-      if (race.Results[0].positionText === "R") stats.dnfs++;
-      if (race.Results[0].grid === "1") stats.polePositions++;
+      const result = race.Results[0];
+      stats.points += parseInt(result.points);
+      // Comparar posições numericamente (a comparação de strings tratava
+      // a 10ª posição como pódio).
+      if (Number(result.position) === 1) stats.wins++;
+      if (Number(result.position) <= 3) stats.podiums++;
+      if (result.positionText === "R") stats.dnfs++;
+      if (result.grid === "1") stats.polePositions++;
     });
 
     return stats;
   };
 
-  // Se os dados ainda não foram carregados, mostrar "Loading..."
-  if (!currentSeasonData || !careerData || !driverInfo) {
-    return <div className="text-center text-white fw-bold fs-2">Loading...</div>;
+  if (error) {
+    return (
+      <section className="glass panel state-panel">
+        <div className="state">
+          <h3>Couldn't load this driver</h3>
+          <p>The results API may be temporarily unavailable.</p>
+        </div>
+      </section>
+    );
   }
 
+  if (!currentSeasonData || !careerData || !driverInfo) {
+    return (
+      <section className="glass panel state-panel">
+        <div className="state">
+          <div className="spinner" />
+          <p>Loading driver…</p>
+        </div>
+      </section>
+    );
+  }
+
+  const rows = [
+    ["Races", currentSeasonData.races, careerData.races],
+    ["Points", currentSeasonData.points, careerData.points],
+    ["Pole positions", currentSeasonData.polePositions, careerData.polePositions],
+    ["Wins", currentSeasonData.wins, careerData.wins],
+    ["Podiums", currentSeasonData.podiums, careerData.podiums],
+    ["DNFs", currentSeasonData.dnfs, careerData.dnfs],
+  ];
+
   return (
-    <Container className="border-bottom">
-      <Row>
-        <Col>
-          <h2 className="text-white fw-bold">
+    <section className="glass panel driver-card">
+      <div className="driver-card__media">
+        {driverInfo.imageUrl ? (
+          <>
+            <img
+              className="driver-card__photo"
+              src={driverInfo.imageUrl}
+              alt={`${driverInfo.givenName} ${driverInfo.familyName}`}
+            />
+            <span className="driver-card__credit">Image: Wikipedia</span>
+          </>
+        ) : (
+          <div className="driver-card__photo" />
+        )}
+      </div>
+
+      <div className="driver-card__main">
+        <div>
+          <h2 className="driver-card__name">
             {driverInfo.givenName} {driverInfo.familyName}
           </h2>
-        </Col>
-      </Row>
-      <Row>
-        <Col md="4">
-          <img
-            src={driverInfo.imageUrl}
-            alt={`${driverInfo.givenName} ${driverInfo.familyName}`}
-            className="img-fluid rounded"
-          />
-          <p>Image sourced from wikipedia</p>
-        </Col>
-        <Col md="8">
-          <div className="box p-4 mt-0">
-            <p className="text-white fs-2 mb-3 fw-bold text-start border-bottom">
-              STATS
-            </p>
-            
-            <table className="fs-5">
-              <thead>
-                <tr className="fw-bold text-white">
-                  <th></th>
-                  <th className="fw-bold text-white">{currentSeasonData.season}</th>
-                  <th className="fw-bold text-white">Career</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td className="text-white">Races</td>
-                  <td>{currentSeasonData.races}</td>
-                  <td>{careerData.races}</td>
-                </tr>
-                <tr>
-                  <td className="text-white">Points</td>
-                  <td>{currentSeasonData.points}</td>
-                  <td>{careerData.points}</td>
-                </tr>
-                <tr>
-                  <td className="text-white">Pole Positions</td>
-                  <td>{currentSeasonData.polePositions}</td>
-                  <td>{careerData.polePositions}</td>
-                </tr>
-                <tr>
-                  <td className="text-white">Wins</td>
-                  <td>{currentSeasonData.wins}</td>
-                  <td>{careerData.wins}</td>
-                </tr>
-                <tr>
-                  <td className="text-white">Podiums</td>
-                  <td>{currentSeasonData.podiums}</td>
-                  <td>{careerData.podiums}</td>
-                </tr>
-                <tr>
-                  <td className="text-white">DNFs</td>
-                  <td>{currentSeasonData.dnfs}</td>
-                  <td>{careerData.dnfs}</td>
-                </tr>
-              </tbody>
-            </table>
+          <div className="driver-card__meta">
+            {driverInfo.permanentNumber && (
+              <span className="pill">#{driverInfo.permanentNumber}</span>
+            )}
+            <span>{driverInfo.nationality}</span>
           </div>
-        </Col>
-      </Row>
-    </Container>
+        </div>
+
+        <table className="dtable">
+          <thead>
+            <tr>
+              <th>Stat</th>
+              <th>{currentSeasonData.season}</th>
+              <th>Career</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(([label, season, career]) => (
+              <tr key={label}>
+                <td className="strong">{label}</td>
+                <td className="num">{season}</td>
+                <td className="num">{career}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
   );
 }
 

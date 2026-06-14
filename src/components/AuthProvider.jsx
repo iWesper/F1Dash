@@ -32,6 +32,7 @@ export function AuthProvider({ children }) {
       setIsLoggedIn(true);
     } catch (error) {
       console.error(error);
+      throw error; // Propagar para o componente mostrar a mensagem de erro
     }
   };
 
@@ -43,6 +44,7 @@ export function AuthProvider({ children }) {
       setIsLoggedIn(true);
     } catch (error) {
       console.error(error);
+      throw error; // Propagar para o componente mostrar a mensagem de erro
     }
   };
 

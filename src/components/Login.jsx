@@ -1,82 +1,94 @@
-import "bootstrap/dist/css/bootstrap.min.css";
-import { FaGoogle } from "react-icons/fa";
-import { Button, FormGroup, Input, Label } from "reactstrap";
 import { useState } from "react";
+import { FcGoogle } from "react-icons/fc";
 import { useAuth } from "../components/AuthProvider";
 import { useNavigate } from "react-router-dom";
 
 export const Login = ({ handleRegisterForm }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
   const { signInWithGoogle, signIn } = useAuth();
   const navigate = useNavigate();
 
-  const handleSignInWithGoogle = async () => {
+  const handleSignIn = async (e) => {
+    e.preventDefault();
+    setError("");
+    setBusy(true);
     try {
-      await signInWithGoogle();
-      navigate("/"); // navigate depois de fazer login
-    } catch (error) {
-      alert("Something went wrong. Please try again.");
+      await signIn(email, password);
+      navigate("/");
+    } catch (err) {
+      setError("Couldn't sign in. Check your email and password.");
+    } finally {
+      setBusy(false);
     }
   };
 
-  const handleSignIn = async () => {
+  const handleGoogle = async () => {
+    setError("");
     try {
-      await signIn(email, password);
-      navigate("/"); // navigate depois de fazer login
-    } catch (error) {
-      alert("Login failed. Please try again.");
-      return;
+      await signInWithGoogle();
+      navigate("/");
+    } catch (err) {
+      setError("Google sign-in failed. Please try again.");
     }
   };
 
   return (
-    <div className="mt-5">
-      <FormGroup>
-        <Label for="email">Email</Label>
-        <Input
+    <form className="form" onSubmit={handleSignIn}>
+      {error && (
+        <div className="form__error" role="alert">
+          {error}
+        </div>
+      )}
+
+      <label className="field">
+        <span className="field__label">Email</span>
+        <input
+          className="input"
           type="email"
-          name="email"
-          id="email"
-          placeholder="example@mail.com"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="form-control form-control-user text-start shadow-sm"
+          placeholder="example@mail.com"
+          autoComplete="email"
+          required
         />
-      </FormGroup>
-      <FormGroup>
-        <Label for="password">Password</Label>
-        <Input
+      </label>
+
+      <label className="field">
+        <span className="field__label">Password</span>
+        <input
+          className="input"
           type="password"
-          name="password"
-          id="password"
-          placeholder="Enter your password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="form-control form-control-user text-start shadow-sm"
-        />{" "}
-      </FormGroup>
-      <Button
-        color="none"
-        onClick={() => handleSignIn(email, password)}
-        className="my-3 btn-outline-light px-5"
+          placeholder="Enter your password"
+          autoComplete="current-password"
+          required
+        />
+      </label>
+
+      <button className="btn btn--primary btn--block" type="submit" disabled={busy}>
+        {busy ? "Signing in…" : "Sign in"}
+      </button>
+
+      <div className="divider">or</div>
+
+      <button
+        type="button"
+        className="btn btn--block btn--google"
+        onClick={handleGoogle}
       >
-        Sign In
-      </Button>
-      <p class="w-100 text-center my-3">— Or Sign In With —</p>
-      <div className="d-flex justify-content-center text-center my-4 pt-1">
-        <FaGoogle className="fs-3" onClick={() => handleSignInWithGoogle()} style={{cursor: "pointer"}}/>
-      </div>
-      <p className="d-flex justify-content-center text-center">
-        <div className="text-white-50">Don't have an account?</div>
-        <Button
-          color="none"
-          onClick={handleRegisterForm}
-          className="text-white py-0 border-0"
-        >
-          Sign Up
-        </Button>
+        <FcGoogle size={18} /> Continue with Google
+      </button>
+
+      <p className="form__switch">
+        Don't have an account?{" "}
+        <button type="button" className="link-btn" onClick={handleRegisterForm}>
+          Sign up
+        </button>
       </p>
-    </div>
+    </form>
   );
 };
