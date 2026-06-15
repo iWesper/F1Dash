@@ -1,6 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
 import axios from "axios";
-import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import {
   FaRegCalendar,
@@ -181,9 +180,16 @@ const NextRaceBox = () => {
 
   // Construir o mapa e ir buscar a próxima corrida quando o geojson carrega
   useEffect(() => {
+    if (!geojsonData) return;
     // Jolpica é o sucessor compatível da API Ergast (desativada no início de 2025).
     const ergastBase = "https://api.jolpi.ca/ergast/f1";
-    if (geojsonData) {
+    let cancelled = false;
+
+    // Leaflet é pesado: carregar dinamicamente para não entrar no bundle inicial.
+    (async () => {
+      const L = (await import("leaflet")).default;
+      if (cancelled) return;
+
       if (mapRef.current) {
         mapRef.current.remove();
       }
@@ -246,10 +252,14 @@ const NextRaceBox = () => {
           });
         }
       });
-    }
+    })();
+
     // Only rebuild the map when the geojson loads. This effect *sets*
     // circuitLatitude/Longitude; depending on them too would tear down and
     // recreate the map and re-fetch the race on every coordinate update.
+    return () => {
+      cancelled = true;
+    };
   }, [geojsonData]);
 
   const year = nextCircuit ? new Date(nextCircuit[1]).getFullYear() : "";

@@ -1,8 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-// react-world-flags é CommonJS e, sob o interop ESM do Vite, o export default
-// vem encapsulado em { default: Componente }. Desembrulhar para obter o componente.
-import FlagModule from "react-world-flags";
 import axios from "axios";
 import {
   addFavoriteDriver,
@@ -11,8 +8,7 @@ import {
 } from "./FavoritesService";
 import { useAuth } from "./AuthProvider";
 import { FaStar, FaRegStar } from "react-icons/fa";
-
-const Flag = FlagModule.default || FlagModule;
+import { Flag, nationalityToCode } from "../utils/flags";
 
 const StandingsBox = ({ setAlert }) => {
   // Variável driverStandings que guarda o array de dados da API
@@ -23,48 +19,6 @@ const StandingsBox = ({ setAlert }) => {
   const [apiIsDown, setApiIsDown] = useState(true);
   const { user } = useAuth();
   const navigate = useNavigate();
-
-  // Transformar nacionalidade em código de país para usar corretamente a flag do react-world-flags
-  const nationalityToCode = {
-    British: "GBR",
-    German: "DEU",
-    Dutch: "NLD",
-    Thai: "THA",
-    Monegasque: "MCO",
-    Finnish: "FIN",
-    French: "FRA",
-    Spanish: "ESP",
-    Canadian: "CAN",
-    Australian: "AUS",
-    Mexican: "MEX",
-    Russian: "RUS",
-    Danish: "DNK",
-    Swedish: "SWE",
-    Italian: "ITA",
-    Belgian: "BEL",
-    Polish: "POL",
-    Japanese: "JPN",
-    Brazilian: "BRA",
-    American: "USA",
-    Indonesian: "IDN",
-    Chinese: "CHN",
-    Portuguese: "PRT",
-    Venezuelan: "VEN",
-    Argentine: "ARG",
-    Colombian: "COL",
-    NewZealander: "NZL",
-    Indian: "IND",
-    Irish: "IRL",
-    Austrian: "AUT",
-    Uruguayan: "URY",
-    Rhodesian: "ZWE",
-    Liechtensteiner: "LIE",
-    Swiss: "CHE",
-    SouthAfrican: "ZAF",
-    Hungarian: "HUN",
-    EastGerman: "DEU",
-    Argentinian: "ARG",
-  };
 
   // Adicionar um driver aos favoritos
   const addFavorite = (driver) => {
@@ -256,8 +210,7 @@ const StandingsBox = ({ setAlert }) => {
                       <span className="cell-inline">
                         <Flag
                           code={nationalityToCode[driver.Driver.nationality]}
-                          className="flag"
-                          fallback={null}
+                          name={driver.Driver.nationality}
                         />
                         {driver.Driver.nationality}
                       </span>
@@ -297,8 +250,7 @@ const StandingsBox = ({ setAlert }) => {
                       <span className="cell-inline">
                         <Flag
                           code={nationalityToCode[team.Constructor.nationality]}
-                          className="flag"
-                          fallback={null}
+                          name={team.Constructor.nationality}
                         />
                         {team.Constructor.nationality}
                       </span>

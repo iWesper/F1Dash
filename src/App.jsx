@@ -1,16 +1,33 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, Suspense, lazy } from "react";
 import "./App.css";
-import { Auth } from "./components/auth";
 import { AuthProvider } from "./components/AuthProvider";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "../src/css/styles.css";
-import Dashboard from "./components/Dashboard";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
-import Favorites from "./components/Favorites";
-import Calendar from "./components/Calendar";
-import DriverPage from "./components/DriverPage";
 import HeaderNav from "./components/HeaderNav";
 import ErrorBoundary from "./components/ErrorBoundary";
+
+// Route-level code splitting: each page ships as its own chunk so the
+// initial load doesn't pull in the calendar, favorites, driver and auth
+// screens (and their dependencies) up front.
+const Dashboard = lazy(() => import("./components/Dashboard"));
+const Auth = lazy(() =>
+  import("./components/auth").then((m) => ({ default: m.Auth }))
+);
+const Favorites = lazy(() => import("./components/Favorites"));
+const Calendar = lazy(() => import("./components/Calendar"));
+const DriverPage = lazy(() => import("./components/DriverPage"));
+
+const PageLoader = () => (
+  <main className="page">
+    <section className="glass panel state-panel">
+      <div className="state">
+        <div className="spinner" />
+        <p>Loading…</p>
+      </div>
+    </section>
+  </main>
+);
 
 function App() {
   const [alert, setAlert] = useState({
@@ -52,13 +69,19 @@ function App() {
           )}
 
           <ErrorBoundary label="this page">
-            <Routes>
-              <Route path="/" index element={<Dashboard setAlert={setAlert} />} />
-              <Route path="/login" element={<Auth />} />
-              <Route path="/favorites" element={<Favorites />} />
-              <Route path="/calendar" element={<Calendar />} />
-              <Route path="/driver/:driverId" element={<DriverPage />} />
-            </Routes>
+            <Suspense fallback={<PageLoader />}>
+              <Routes>
+                <Route
+                  path="/"
+                  index
+                  element={<Dashboard setAlert={setAlert} />}
+                />
+                <Route path="/login" element={<Auth />} />
+                <Route path="/favorites" element={<Favorites />} />
+                <Route path="/calendar" element={<Calendar />} />
+                <Route path="/driver/:driverId" element={<DriverPage />} />
+              </Routes>
+            </Suspense>
           </ErrorBoundary>
         </div>
       </AuthProvider>

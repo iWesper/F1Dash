@@ -2,10 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import axios from "axios";
 import { FaArrowLeftLong, FaRegCalendarPlus } from "react-icons/fa6";
-import FlagModule from "react-world-flags";
-import { countryToCode } from "../utils/countries";
-
-const Flag = FlagModule.default || FlagModule;
+import { Flag, countryToCode } from "../utils/flags";
 
 // Ergast/Jolpica session keys → human labels. Order doesn't matter: each
 // session is sorted by its own date/time so sprint weekends render correctly.
@@ -171,8 +168,7 @@ function Calendar() {
                   <div className="race-card__heading">
                     <Flag
                       code={countryToCode[race.Circuit.Location.country]}
-                      className="flag"
-                      fallback={null}
+                      name={race.Circuit.Location.country}
                     />
                     <h3 className="race-card__name">{race.raceName}</h3>
                     {isNext && <span className="badge badge--next">Next</span>}
