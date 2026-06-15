@@ -98,14 +98,14 @@ const NextRaceBox = () => {
     return { nextRaceWeatherData, previousRaceWeatherData };
   };
 
-  // Carregar o ficheiro geojson uma vez, na montagem
+  // Load the GeoJSON file once on mount.
   useEffect(() => {
     fetch(geojsonFile)
       .then((response) => response.json())
       .then((data) => setGeojsonData(data));
   }, []);
 
-  // Contagem decrescente até à corrida (atualiza a cada segundo)
+  // Countdown to the race, updated every second.
   useEffect(() => {
     if (nextCircuit && nextCircuit[1]) {
       const iso = nextCircuit[2]
@@ -135,7 +135,7 @@ const NextRaceBox = () => {
     }
   }, [nextCircuit]);
 
-  // Obter dados meteorológicos quando há próxima corrida + coordenadas
+  // Fetch weather once we have the circuit coordinates and race date.
   useEffect(() => {
     if (nextCircuit && circuitLatitude && circuitLongitude) {
       const toYmd = (d) => {
@@ -178,14 +178,14 @@ const NextRaceBox = () => {
     // Without it the historical rows are fetched with an empty date list.
   }, [nextCircuit, circuitLatitude, circuitLongitude, lastWinners]);
 
-  // Construir o mapa e ir buscar a próxima corrida quando o geojson carrega
+  // Build the map and fetch the next race once GeoJSON is ready.
   useEffect(() => {
     if (!geojsonData) return;
-    // Jolpica é o sucessor compatível da API Ergast (desativada no início de 2025).
+    // Jolpica is the Ergast-compatible successor (Ergast shut down early 2025).
     const ergastBase = "https://api.jolpi.ca/ergast/f1";
     let cancelled = false;
 
-    // Leaflet é pesado: carregar dinamicamente para não entrar no bundle inicial.
+    // Leaflet is large — import dynamically to keep it out of the initial bundle.
     (async () => {
       const L = (await import("leaflet")).default;
       if (cancelled) return;
@@ -197,7 +197,7 @@ const NextRaceBox = () => {
       mapRef.current = L.map("map", { zoomControl: true, attributionControl: true })
         .setView([30, 10], 2);
 
-      // Tiles escuros (CARTO) para combinar com o tema; suportam CORS diretamente.
+      // Dark CARTO tiles match the app theme and support CORS directly.
       L.tileLayer(
         "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
         {
@@ -245,7 +245,7 @@ const NextRaceBox = () => {
         if (races.length > 0) {
           handleRace(races[0], true);
         } else {
-          // Off season — mostrar a última corrida
+          // Off-season — show the last race instead.
           setNextRaceAvailability(false);
           axios.get(`${ergastBase}/current/last.json`).then((res) => {
             handleRace(res.data.MRData.RaceTable.Races[0], false);
@@ -264,7 +264,7 @@ const NextRaceBox = () => {
 
   const year = nextCircuit ? new Date(nextCircuit[1]).getFullYear() : "";
 
-  // Linhas combinadas da tabela meteorológica (próxima + anteriores)
+  // Combined weather table rows: upcoming race + historical races.
   const weatherRows = [];
   if (nextRaceWeatherData) {
     weatherRows.push({

@@ -21,8 +21,8 @@ const firebaseConfig = {
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
-// Inicializar Analytics apenas se for suportado e se houver configuração válida,
-// para a app não rebentar no arranque (ex.: sem .env ou ambientes sem suporte).
+// Only init Analytics when supported and a key is present, so the app doesn't
+// crash on startup in environments without .env or without Analytics support.
 isSupported()
   .then((supported) => {
     if (supported && firebaseConfig.apiKey) getAnalytics(app);

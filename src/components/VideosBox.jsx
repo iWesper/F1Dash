@@ -25,7 +25,7 @@ const VideosBox = () => {
           }
         );
 
-        // Remover shorts: filtrar títulos com emojis ou a hashtag #shorts
+        // Filter out Shorts: titles with emojis or the #shorts hashtag.
         const filterNoShortsVideos = response.data.items.filter((video) => {
           const title = video.snippet.title;
           const hasEmoji = title.match(/[\p{Extended_Pictographic}]/u);

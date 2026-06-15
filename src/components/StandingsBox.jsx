@@ -11,7 +11,6 @@ import { FaStar, FaRegStar } from "react-icons/fa";
 import { Flag, nationalityToCode } from "../utils/flags";
 
 const StandingsBox = ({ setAlert }) => {
-  // Variável driverStandings que guarda o array de dados da API
   const [driverStandings, setDriverStandings] = useState([]);
   const [constructorStandings, setConstructorStandings] = useState([]);
   const [tab, setTab] = useState("drivers");
@@ -20,7 +19,6 @@ const StandingsBox = ({ setAlert }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  // Adicionar um driver aos favoritos
   const addFavorite = (driver) => {
     if (user) {
       addFavoriteDriver(user.uid, driver.Driver.driverId)
@@ -41,12 +39,10 @@ const StandingsBox = ({ setAlert }) => {
           console.error(error);
         });
     } else {
-      // Redirecionar o utilizador para a página de login
       navigate("/login");
     }
   };
 
-  // Remover um driver dos favoritos
   const removeFavorite = (driver) => {
     if (user) {
       removeFavoriteDriver(user.uid, driver.Driver.driverId)
@@ -71,7 +67,7 @@ const StandingsBox = ({ setAlert }) => {
     }
   };
 
-  // Ao carregar na página, vai buscar os favoritos do utilizador
+  // Fetch the user's saved favorites on mount.
   useEffect(() => {
     if (user) {
       getFavoriteDrivers(user.uid)
@@ -82,8 +78,7 @@ const StandingsBox = ({ setAlert }) => {
     }
   }, [user]);
 
-  // Ao carregar na página, faz um GET request à API e guarda os dados.
-  // Jolpica é o sucessor compatível da API Ergast e suporta CORS diretamente.
+  // Fetch standings on mount. Jolpica is the Ergast-compatible successor and supports CORS directly.
   useEffect(() => {
     axios
       .get("https://api.jolpi.ca/ergast/f1/current/driverStandings.json")

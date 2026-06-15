@@ -3,10 +3,8 @@ import { Link } from "react-router-dom";
 import axios from "axios";
 
 const Standings = () => {
-  // Variável driverStandings que guarda o array de dados da API
   const [driverStandings, setDriverStandings] = useState([]);
 
-  // Ao carregar na página, faz um GET request à API e guarda os dados no array driverStandings
   useEffect(() => {
     axios
       .get("https://api.jolpi.ca/ergast/f1/current/driverStandings.json")

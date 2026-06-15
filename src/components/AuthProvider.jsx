@@ -11,11 +11,10 @@ const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
-  // Determinar se o user está logged in ou não
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
-  // Manter o estado de autenticação após refresh: o Firebase persiste a sessão
-  // e este listener repõe o user quando a app volta a montar.
+  // Keep auth state after a page refresh: Firebase persists the session and
+  // this listener restores the user when the app remounts.
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
@@ -24,7 +23,6 @@ export function AuthProvider({ children }) {
     return unsubscribe;
   }, []);
 
-  // Log in com a conta google
   const signInWithGoogle = async () => {
     try {
       const credential = await signInWithPopup(auth, googleProvider);
@@ -32,11 +30,10 @@ export function AuthProvider({ children }) {
       setIsLoggedIn(true);
     } catch (error) {
       console.error(error);
-      throw error; // Propagar para o componente mostrar a mensagem de erro
+      throw error; // re-thrown so the calling component can show an error message
     }
   };
 
-  // Registar com email e password
   const signUp = async (email, password) => {
     try {
       const credential = await createUserWithEmailAndPassword(auth, email, password);
@@ -44,24 +41,21 @@ export function AuthProvider({ children }) {
       setIsLoggedIn(true);
     } catch (error) {
       console.error(error);
-      throw error; // Propagar para o componente mostrar a mensagem de erro
+      throw error; // re-thrown so the calling component can show an error message
     }
   };
 
-  // Login com email e password (API modular do Firebase v9+)
   const signIn = (email, password) => {
     return signInWithEmailAndPassword(auth, email, password)
       .then((userCredential) => {
-        // Se o login for bem sucedido, setUser e setIsLoggedIn
         setUser(userCredential.user);
         setIsLoggedIn(true);
       })
       .catch((error) => {
-        throw error; // Dar throw do error para o componente Login.js
+        throw error; // re-thrown so the Login component can display it
       });
   };
 
-  // Logout
   const signOutUser = async () => {
     try {
       await signOut(auth);

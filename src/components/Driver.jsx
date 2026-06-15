@@ -26,10 +26,9 @@ function Driver({ driverId }) {
           }
         }
 
-        // Obter os dados do piloto da primeira corrida da temporada atual
         const driverInfo = races[0].Results[0].Driver;
 
-        // A API da Wikipedia suporta CORS anónimo através de origin=* (sem proxy).
+        // Wikipedia supports anonymous CORS via origin=* — no proxy needed.
         let imageUrl = null;
         try {
           const wikipediaResponse = await axios.get(
@@ -39,14 +38,12 @@ function Driver({ driverId }) {
           const pageID = Object.keys(pages)[0];
           imageUrl = pages[pageID]?.original?.source ?? null;
         } catch {
-          // Sem imagem — o card mostra um placeholder.
+          // No image — the card shows a placeholder.
         }
 
-        // Adicionar a imagem ao objeto driverInfo
         setDriverInfo({ ...driverInfo, imageUrl });
 
-        // Calcular as estatísticas da temporada atual e da carreira.
-        // Usar a temporada mais recente presente nos resultados (em vez de um ano fixo).
+        // Use the most recent season in the results rather than a hardcoded year.
         const latestSeason = races.reduce(
           (max, race) => (Number(race.season) > Number(max) ? race.season : max),
           races[0].season
@@ -64,7 +61,6 @@ function Driver({ driverId }) {
     fetchDriverData();
   }, [driverId]);
 
-  // Função que calcula as estatísticas do piloto
   const calculateStats = (races) => {
     let stats = {
       season: races[0].season,
@@ -79,8 +75,7 @@ function Driver({ driverId }) {
     races.forEach((race) => {
       const result = race.Results[0];
       stats.points += parseInt(result.points);
-      // Comparar posições numericamente (a comparação de strings tratava
-      // a 10ª posição como pódio).
+      // Compare positions numerically — string comparison treated 10th as a podium.
       if (Number(result.position) === 1) stats.wins++;
       if (Number(result.position) <= 3) stats.podiums++;
       if (result.positionText === "R") stats.dnfs++;

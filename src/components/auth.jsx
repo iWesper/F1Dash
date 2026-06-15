@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Login } from "./Login";
 import { SignUp } from "./SignUp";
-// Logotipo (vite-plugin-svgr: ?react devolve o SVG como componente React)
+// vite-plugin-svgr: the ?react suffix imports the SVG as a React component.
 import Logo from "../imgs/logo.svg?react";
 
 export const Auth = () => {

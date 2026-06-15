@@ -1,16 +1,16 @@
 import React from "react";
 
 /**
- * Limite de erro (error boundary) reutilizável.
+ * Reusable error boundary.
  *
- * O React só apanha erros de renderização através de componentes de classe com
- * getDerivedStateFromError / componentDidCatch. Envolve uma secção da árvore para
- * que uma falha (ex.: uma API em baixo) mostre um fallback em vez de rebentar a app
- * inteira (ecrã branco).
+ * React only catches render errors via class components with
+ * getDerivedStateFromError / componentDidCatch. Wrap a section of the tree so
+ * a failure (e.g. a broken API) shows a fallback instead of crashing the whole
+ * app (white screen).
  *
  * Props:
- *  - label:    nome da secção, usado na mensagem por omissão.
- *  - fallback: elemento React opcional para substituir a mensagem por omissão.
+ *  - label:    section name, used in the default message.
+ *  - fallback: optional React element to replace the default message.
  */
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -23,7 +23,7 @@ class ErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, info) {
-    // Em produção, isto seria enviado para um serviço de logging.
+    // In production this would be forwarded to a logging service.
     console.error(`ErrorBoundary${this.props.label ? ` (${this.props.label})` : ""}:`, error, info);
   }
 
