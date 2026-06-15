@@ -42,9 +42,9 @@ This is the single most common source of mistakes here.
 
 ## Conventions
 
-- **Comments are written in Portuguese.** Match that when editing existing files
-  so the codebase stays consistent (new top-level docs like this one are in
-  English).
+- **Write comments in English.** Much of the existing code has Portuguese
+  comments (legacy), but new and edited comments should be in English. No need
+  to mass-translate the old ones unless asked.
 - **User-facing toasts** flow through a `setAlert({ visible, message, color })`
   callback created in `App.jsx` and passed down as a prop (e.g. to `Dashboard` →
   `StandingsBox`). Reuse this pattern instead of adding new notification systems.
