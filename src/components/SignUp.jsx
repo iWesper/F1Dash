@@ -1,15 +1,16 @@
 import { useState } from "react";
-import { FcGoogle } from "react-icons/fc";
-import { useAuth } from "../components/AuthProvider";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
+import { authErrorMessage, useAuth } from "./AuthProvider";
+import { EmailField, FormError, GoogleButton, PasswordField } from "./Login";
 
-export const SignUp = ({ handleRegisterForm }) => {
-  const [email, setEmail] = useState("");
+const MIN_PASSWORD = 6; // Firebase's minimum
+
+export const SignUp = ({ email, setEmail, onSwitch, from }) => {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const { signUp, signInWithGoogle } = useAuth();
+  const { signUp } = useAuth();
   const navigate = useNavigate();
 
   const handleSignUp = async (e) => {
@@ -17,11 +18,11 @@ export const SignUp = ({ handleRegisterForm }) => {
     setError("");
 
     if (!/\S+@\S+\.\S+/.test(email)) {
-      setError("Please enter a valid email address.");
+      setError("That doesn't look like a valid email address.");
       return;
     }
-    if (password.length < 6) {
-      setError("Your password must be at least 6 characters long.");
+    if (password.length < MIN_PASSWORD) {
+      setError(`Your password needs at least ${MIN_PASSWORD} characters.`);
       return;
     }
     if (password !== confirm) {
@@ -31,93 +32,45 @@ export const SignUp = ({ handleRegisterForm }) => {
 
     setBusy(true);
     try {
-      await signUp(email, password);
-      navigate("/");
+      await signUp(email.trim(), password);
+      navigate(from, { replace: true });
     } catch (err) {
-      setError(
-        err?.code === "auth/email-already-in-use"
-          ? "An account with that email already exists."
-          : "Couldn't create your account. Please try again."
-      );
-    } finally {
+      setError(authErrorMessage(err));
       setBusy(false);
     }
   };
 
-  const handleGoogle = async () => {
-    setError("");
-    try {
-      await signInWithGoogle();
-      navigate("/");
-    } catch (err) {
-      setError("Google sign-in failed. Please try again.");
-    }
-  };
+  const mismatch = confirm.length > 0 && confirm !== password;
 
   return (
     <form className="form" onSubmit={handleSignUp}>
-      {error && (
-        <div className="form__error" role="alert">
-          {error}
-        </div>
-      )}
+      <FormError message={error} />
+      <EmailField value={email} onChange={setEmail} />
+      <PasswordField
+        label="Password"
+        value={password}
+        onChange={setPassword}
+        autoComplete="new-password"
+        hint={`At least ${MIN_PASSWORD} characters.`}
+      />
+      <PasswordField
+        label="Confirm password"
+        value={confirm}
+        onChange={setConfirm}
+        autoComplete="new-password"
+        hint={mismatch ? "Doesn't match yet." : undefined}
+      />
 
-      <label className="field">
-        <span className="field__label">Email</span>
-        <input
-          className="input"
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="example@mail.com"
-          autoComplete="email"
-          required
-        />
-      </label>
-
-      <label className="field">
-        <span className="field__label">Password</span>
-        <input
-          className="input"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          placeholder="At least 6 characters"
-          autoComplete="new-password"
-          required
-        />
-      </label>
-
-      <label className="field">
-        <span className="field__label">Confirm password</span>
-        <input
-          className="input"
-          type="password"
-          value={confirm}
-          onChange={(e) => setConfirm(e.target.value)}
-          placeholder="Re-enter your password"
-          autoComplete="new-password"
-          required
-        />
-      </label>
-
-      <button className="btn btn--primary btn--block" type="submit" disabled={busy}>
+      <button className="btn btn--primary btn--block" type="submit" disabled={busy} aria-busy={busy}>
         {busy ? "Creating account…" : "Create account"}
       </button>
 
       <div className="divider">or</div>
-
-      <button
-        type="button"
-        className="btn btn--block btn--google"
-        onClick={handleGoogle}
-      >
-        <FcGoogle size={18} /> Continue with Google
-      </button>
+      <GoogleButton onError={setError} from={from} />
 
       <p className="form__switch">
         Already have an account?{" "}
-        <button type="button" className="link-btn" onClick={handleRegisterForm}>
+        <button type="button" className="link-btn" onClick={() => onSwitch("signin")}>
           Sign in
         </button>
       </p>

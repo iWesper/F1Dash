@@ -1,16 +1,17 @@
 import React from "react";
+import { State } from "./State";
 
 /**
  * Reusable error boundary.
  *
  * React only catches render errors via class components with
  * getDerivedStateFromError / componentDidCatch. Wrap a section of the tree so
- * a failure (e.g. a broken API) shows a fallback instead of crashing the whole
- * app (white screen).
+ * a failure shows a fallback instead of crashing the whole app.
  *
  * Props:
  *  - label:    section name, used in the default message.
  *  - fallback: optional React element to replace the default message.
+ *  - resetKey: when this changes (e.g. the route), the boundary resets.
  */
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -22,8 +23,13 @@ class ErrorBoundary extends React.Component {
     return { hasError: true };
   }
 
+  componentDidUpdate(prevProps) {
+    if (this.state.hasError && prevProps.resetKey !== this.props.resetKey) {
+      this.setState({ hasError: false });
+    }
+  }
+
   componentDidCatch(error, info) {
-    // In production this would be forwarded to a logging service.
     console.error(`ErrorBoundary${this.props.label ? ` (${this.props.label})` : ""}:`, error, info);
   }
 
@@ -35,17 +41,15 @@ class ErrorBoundary extends React.Component {
 
     const { label } = this.props;
     return (
-      <div className="box p-4 text-center text-white">
-        <h2 className="fw-bold">
-          {label ? `Couldn't load ${label}.` : "Something went wrong here."}
-        </h2>
-        <p className="mb-3">
-          This section failed to render — the rest of the app should still work.
-        </p>
-        <button className="btn btn-outline-light" onClick={this.handleReset}>
-          Try again
-        </button>
-      </div>
+      <section className="glass panel">
+        <State
+          kind="error"
+          title={label ? `Couldn't show ${label}` : "Something went wrong"}
+          action={{ label: "Try again", onClick: this.handleReset }}
+        >
+          This part of the page hit an unexpected error. The rest of the app still works.
+        </State>
+      </section>
     );
   }
 }

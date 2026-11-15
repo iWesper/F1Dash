@@ -18,20 +18,21 @@ You can view the live application at [f1dash.vercel.app](https://f1dash.vercel.a
 
 ## Features
 
-- Display upcoming race information, including date, time, and circuit layout.
-- Show the complete driver standings for the current Formula 1 season.
+- Display upcoming race information: local-time countdown, weekend session schedule, circuit layout, race-day forecast and past winners.
+- Show the driver and constructor standings for the current Formula 1 season.
+- Full season calendar with "add to calendar" (.ics) for every session.
 - Integrate the latest news related to Formula 1.
 - Present recent videos from the official Formula 1 YouTube channel.
 - User authentication to manage favorite drivers.
-- Interactive map of F1 circuits using geoJSON.
+- Circuit layouts drawn as SVG from geoJSON.
 
 ## Technologies Used
 
 - **Build tool:** Vite
-- **Frontend:** React, Axios
-- **Styling:** Reactstrap, Bootstrap
-- **Mapping:** Leaflet, geoJSON
-- **Backend:** Firebase (for user authentication)
+- **Frontend:** React, React Router, TanStack Query
+- **Styling:** Hand-written CSS (no framework)
+- **Mapping:** geoJSON rendered as SVG
+- **Backend:** Firebase (authentication + Firestore for favorites)
 
 ## APIs Used
 
@@ -39,7 +40,7 @@ You can view the live application at [f1dash.vercel.app](https://f1dash.vercel.a
 - **WorldWeatherOnline:** Fetch weather data for race locations.
 - **News API:** Retrieve the latest news articles about Formula 1.
 - **YouTube Data API:** Display recent videos from the official Formula 1 channel.
-- **Wikipedia API:** Display driver's photos in the favorites page.
+- **Wikipedia API:** Driver photos on profile and favorites pages.
 
 ## Installation
 
@@ -65,6 +66,7 @@ To run this project locally, follow these steps:
    REACT_APP_FIREBASE_API_KEY=your_firebase_api_key
    ```
    > The `REACT_APP_` prefix is kept for backwards compatibility; Vite is configured to read it.
+   > Every key is optional: a panel whose key is missing shows a "not configured" state, and without the Firebase key accounts are disabled while the rest of the app works.
 5. Start the development server:
    ```bash
    npm run dev

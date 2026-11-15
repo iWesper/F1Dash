@@ -1,7 +1,0 @@
-/* App-level styles.
-   The global background now lives in src/index.css (.aurora) and the
-   component design system in src/css/styles.css. */
-
-.App {
-  text-align: center;
-}

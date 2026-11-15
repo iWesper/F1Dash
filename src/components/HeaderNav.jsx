@@ -1,58 +1,84 @@
-import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, NavLink, useLocation, useNavigate } from "react-router";
+import { FaBars, FaXmark, FaArrowRightFromBracket } from "react-icons/fa6";
 import { useAuth } from "./AuthProvider";
-import { FaBars, FaXmark } from "react-icons/fa6";
 
 const HeaderNav = () => {
   const [open, setOpen] = useState(false);
-  const { user, signOutUser } = useAuth();
+  const { user, enabled, authReady, signOutUser } = useAuth();
+  const { pathname } = useLocation();
+  const navigate = useNavigate();
 
-  const close = () => setOpen(false);
+  // Close the mobile menu on navigation and on Escape.
+  useEffect(() => setOpen(false), [pathname]);
+  useEffect(() => {
+    if (!open) return undefined;
+    const onKey = (e) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open]);
+
+  const handleSignOut = async () => {
+    await signOutUser().catch(() => {});
+    if (pathname === "/favorites") navigate("/");
+  };
+
+  const linkClass = ({ isActive }) => `nav__link ${isActive ? "is-active" : ""}`;
 
   return (
     <header className="nav">
       <div className={`nav__inner glass ${open ? "is-open" : ""}`}>
-        <Link to="/" className="brand" onClick={close}>
-          <span className="brand__mark">F1</span>
+        <Link to="/" className="brand" aria-label="F1 Dash home">
+          <span className="brand__mark" aria-hidden="true">
+            F1
+          </span>
           Dash
         </Link>
 
         <button
+          type="button"
           className="nav__toggle"
-          aria-label="Toggle navigation"
+          aria-label={open ? "Close menu" : "Open menu"}
           aria-expanded={open}
+          aria-controls="nav-menu"
           onClick={() => setOpen((o) => !o)}
         >
           {open ? <FaXmark size={18} /> : <FaBars size={18} />}
         </button>
 
-        <nav className="nav__menu">
-          <Link to="/calendar" className="nav__link" onClick={close}>
+        <nav className="nav__menu" id="nav-menu" aria-label="Main">
+          <NavLink to="/" end className={linkClass}>
+            Dashboard
+          </NavLink>
+          <NavLink to="/calendar" className={linkClass}>
             Calendar
-          </Link>
-          <Link to="/favorites" className="nav__link" onClick={close}>
+          </NavLink>
+          <NavLink to="/favorites" className={linkClass}>
             Favorites
-          </Link>
+          </NavLink>
 
           <span className="nav__spacer" />
 
-          {user ? (
+          {!authReady ? (
+            // Reserve the button's space while Firebase restores the session.
+            <span className="nav__auth-placeholder" aria-hidden="true" />
+          ) : user ? (
             <div className="nav__user-wrap">
-              <span className="nav__user">{user.email || "Signed in"}</span>
-              <button
-                className="btn btn--ghost"
-                onClick={() => {
-                  signOutUser();
-                  close();
-                }}
-              >
-                Logout
+              <span className="nav__user" title={user.email ?? undefined}>
+                {user.displayName || user.email || "Signed in"}
+              </span>
+              <button type="button" className="btn btn--ghost" onClick={handleSignOut}>
+                <FaArrowRightFromBracket aria-hidden="true" />
+                Sign out
               </button>
             </div>
           ) : (
-            <Link to="/login" className="btn btn--primary" onClick={close}>
-              Sign in
-            </Link>
+            enabled &&
+            pathname !== "/login" && (
+              <Link to="/login" state={{ from: pathname }} className="btn btn--primary">
+                Sign in
+              </Link>
+            )
           )}
         </nav>
       </div>

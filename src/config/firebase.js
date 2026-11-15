@@ -1,14 +1,8 @@
-// Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
-import { getAnalytics, isSupported } from "firebase/analytics";
-import {getAuth, GoogleAuthProvider} from "firebase/auth";
+import { getAuth, GoogleAuthProvider } from "firebase/auth";
 
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
-
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+// Config is public by design (Firebase security lives in Auth + Firestore
+// rules); only the API key comes from env so forks can point at their own.
 const firebaseConfig = {
   apiKey: import.meta.env.REACT_APP_FIREBASE_API_KEY,
   authDomain: "project-party-6d703.firebaseapp.com",
@@ -19,15 +13,31 @@ const firebaseConfig = {
   measurementId: "G-3NLRD1KZEW",
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-// Only init Analytics when supported and a key is present, so the app doesn't
-// crash on startup in environments without .env or without Analytics support.
-isSupported()
-  .then((supported) => {
-    if (supported && firebaseConfig.apiKey) getAnalytics(app);
-  })
-  .catch(() => {});
-export const db = getFirestore(app);
-export const auth = getAuth(app);
-export const googleProvider = new GoogleAuthProvider();
+// getAuth() throws auth/invalid-api-key synchronously when the key is
+// missing, which used to blank the whole app. Without a key we run with
+// accounts disabled instead; every consumer checks `firebaseEnabled`.
+let app = null;
+let auth = null;
+if (firebaseConfig.apiKey) {
+  try {
+    app = initializeApp(firebaseConfig);
+    auth = getAuth(app);
+  } catch (error) {
+    console.error("Firebase failed to initialise; accounts are disabled.", error);
+    app = null;
+    auth = null;
+  }
+}
+
+export const firebaseEnabled = Boolean(auth);
+export { app, auth };
+export const googleProvider = firebaseEnabled ? new GoogleAuthProvider() : null;
+
+// Analytics is optional and sizeable, so it loads after first paint.
+if (app) {
+  import("firebase/analytics")
+    .then(({ getAnalytics, isSupported }) =>
+      isSupported().then((ok) => ok && getAnalytics(app))
+    )
+    .catch(() => {});
+}

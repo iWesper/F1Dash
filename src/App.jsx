@@ -1,91 +1,137 @@
-import React, { useEffect, useState, Suspense, lazy } from "react";
-import "./App.css";
+import { useCallback, useEffect, useState, Suspense, lazy } from "react";
+import { BrowserRouter, Route, Routes, useLocation } from "react-router";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { FaXmark } from "react-icons/fa6";
 import { AuthProvider } from "./components/AuthProvider";
-import "bootstrap/dist/css/bootstrap.min.css";
-import "../src/css/styles.css";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
 import HeaderNav from "./components/HeaderNav";
 import ErrorBoundary from "./components/ErrorBoundary";
+import { State } from "./components/State";
+import { retryDelay, shouldRetry } from "./api/http";
+import "./css/styles.css";
 
 // Route-level code splitting: each page ships as its own chunk so the
-// initial load doesn't pull in the calendar, favorites, driver and auth
-// screens (and their dependencies) up front.
+// initial load doesn't pull in every screen (and its dependencies) up front.
 const Dashboard = lazy(() => import("./components/Dashboard"));
-const Auth = lazy(() =>
-  import("./components/auth").then((m) => ({ default: m.Auth }))
-);
+const Auth = lazy(() => import("./components/auth").then((m) => ({ default: m.Auth })));
 const Favorites = lazy(() => import("./components/Favorites"));
 const Calendar = lazy(() => import("./components/Calendar"));
 const DriverPage = lazy(() => import("./components/DriverPage"));
+const NotFound = lazy(() => import("./components/NotFound"));
+
+// One cache for the whole app: panels that share data (schedule, standings)
+// fetch once, and navigating back to the dashboard doesn't refetch
+// everything — which matters because Jolpica rate-limits bursts.
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000,
+      gcTime: 30 * 60 * 1000,
+      retry: shouldRetry,
+      retryDelay,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 const PageLoader = () => (
-  <main className="page">
+  <main className="page" id="main">
     <section className="glass panel state-panel">
-      <div className="state">
-        <div className="spinner" />
-        <p>Loading…</p>
-      </div>
+      <State kind="loading">Loading…</State>
     </section>
   </main>
 );
 
-function App() {
-  const [alert, setAlert] = useState({
-    visible: false,
-    message: "",
-    color: "",
-  });
+/**
+ * Toast fed by the app-wide setAlert({ visible, message, color }) callback.
+ * The live region stays mounted so screen readers announce each message.
+ */
+function Toast({ alert, onDismiss }) {
+  return (
+    <div className="toast-region" role="status" aria-live="polite">
+      {alert.visible && (
+        <div className={`toast glass toast--${alert.color}`} key={alert.id}>
+          <span>{alert.message}</span>
+          <button type="button" className="toast__close" onClick={onDismiss} aria-label="Dismiss">
+            <FaXmark aria-hidden="true" />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
 
+function AppRoutes({ setAlert }) {
+  const { pathname } = useLocation();
+
+  // New page: start at the top, like a normal navigation.
   useEffect(() => {
-    if (alert.visible) {
-      const timer = setTimeout(() => {
-        setAlert((prevAlert) => ({ ...prevAlert, visible: false }));
-      }, 3000); // 3000ms = 3s
-      return () => clearTimeout(timer);
-    }
-  }, [alert.visible]);
+    window.scrollTo(0, 0);
+  }, [pathname]);
 
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        {/* Dark aurora backdrop (fixed, behind everything) */}
-        <div className="aurora" aria-hidden="true">
-          <span className="aurora__blob aurora__blob--1" />
-          <span className="aurora__blob aurora__blob--2" />
-          <span className="aurora__blob aurora__blob--3" />
-        </div>
+    <ErrorBoundary label="this page" resetKey={pathname}>
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          <Route path="/" element={<Dashboard setAlert={setAlert} />} />
+          <Route path="/login" element={<Auth />} />
+          <Route path="/favorites" element={<Favorites setAlert={setAlert} />} />
+          <Route path="/calendar" element={<Calendar />} />
+          <Route path="/driver/:driverId" element={<DriverPage setAlert={setAlert} />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </Suspense>
+    </ErrorBoundary>
+  );
+}
 
-        <div className="app-shell App">
-          <HeaderNav />
+function App() {
+  const [alert, setAlertState] = useState({ visible: false, message: "", color: "", id: 0 });
 
-          {alert.visible && (
-            <div
-              className={`toast glass toast--${alert.color}`}
-              role="status"
-              onClick={() => setAlert({ ...alert, visible: false })}
-            >
-              {alert.message}
-            </div>
-          )}
+  // Each call gets a new id so back-to-back toasts restart the timer.
+  const setAlert = useCallback(
+    (next) =>
+      setAlertState((prev) => ({
+        ...(typeof next === "function" ? next(prev) : next),
+        id: prev.id + 1,
+      })),
+    []
+  );
 
-          <ErrorBoundary label="this page">
-            <Suspense fallback={<PageLoader />}>
-              <Routes>
-                <Route
-                  path="/"
-                  index
-                  element={<Dashboard setAlert={setAlert} />}
-                />
-                <Route path="/login" element={<Auth />} />
-                <Route path="/favorites" element={<Favorites />} />
-                <Route path="/calendar" element={<Calendar />} />
-                <Route path="/driver/:driverId" element={<DriverPage />} />
-              </Routes>
-            </Suspense>
-          </ErrorBoundary>
-        </div>
-      </AuthProvider>
-    </BrowserRouter>
+  useEffect(() => {
+    if (!alert.visible) return undefined;
+    const timer = setTimeout(
+      () => setAlertState((prev) => ({ ...prev, visible: false })),
+      3500
+    );
+    return () => clearTimeout(timer);
+  }, [alert.visible, alert.id]);
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <AuthProvider>
+          <a href="#main" className="skip-link">
+            Skip to content
+          </a>
+
+          {/* Dark aurora backdrop (fixed, behind everything) */}
+          <div className="aurora" aria-hidden="true">
+            <span className="aurora__blob aurora__blob--1" />
+            <span className="aurora__blob aurora__blob--2" />
+            <span className="aurora__blob aurora__blob--3" />
+          </div>
+
+          <div className="app-shell">
+            <HeaderNav />
+            <Toast
+              alert={alert}
+              onDismiss={() => setAlertState((prev) => ({ ...prev, visible: false }))}
+            />
+            <AppRoutes setAlert={setAlert} />
+          </div>
+        </AuthProvider>
+      </BrowserRouter>
+    </QueryClientProvider>
   );
 }
 
