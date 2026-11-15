@@ -1,264 +1,210 @@
-import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router";
-import axios from "axios";
-import {
-  addFavoriteDriver,
-  removeFavoriteDriver,
-  getFavoriteDrivers,
-} from "./FavoritesService";
-import { useAuth } from "./AuthProvider";
+import { useState } from "react";
+import { Link, useNavigate } from "react-router";
+import { useQuery } from "@tanstack/react-query";
 import { FaStar, FaRegStar } from "react-icons/fa";
+import { fetchConstructorStandings, fetchDriverStandings } from "../api/f1";
 import { Flag, nationalityToCode } from "../utils/flags";
+import { useAuth } from "./AuthProvider";
+import { useFavorites } from "../hooks/useFavorites";
+import { QueryError, SkeletonRows, State } from "./State";
 
-const StandingsBox = ({ setAlert }) => {
-  const [driverStandings, setDriverStandings] = useState([]);
-  const [constructorStandings, setConstructorStandings] = useState([]);
-  const [tab, setTab] = useState("drivers");
-  const [favoriteDrivers, setFavoriteDrivers] = useState([]);
-  const [apiIsDown, setApiIsDown] = useState(true);
-  const { user } = useAuth();
+const Pos = ({ pos }) => <span className={`pos ${pos <= 3 ? `pos--${pos}` : ""}`}>{pos}</span>;
+
+function DriversTable({ rows, setAlert }) {
+  const { user, enabled } = useAuth();
+  const favorites = useFavorites({ setAlert });
   const navigate = useNavigate();
+  const leaderPts = Number(rows[0]?.points ?? 0);
 
-  const addFavorite = (driver) => {
-    if (user) {
-      addFavoriteDriver(user.uid, driver.Driver.driverId)
-        .then(() => {
-          setAlert({
-            visible: true,
-            message: "Added to your favorite drivers",
-            color: "success",
-          });
-          setFavoriteDrivers([...favoriteDrivers, driver.Driver.driverId]);
-        })
-        .catch((error) => {
-          setAlert({
-            visible: true,
-            message: `An error occurred while adding your favorite driver! Please try again later.`,
-            color: "danger",
-          });
-          console.error(error);
-        });
-    } else {
-      navigate("/login");
+  const onStar = (driver) => {
+    const name = `${driver.givenName} ${driver.familyName}`;
+    if (!user) {
+      setAlert({ visible: true, message: "Sign in to save favorite drivers", color: "info" });
+      navigate("/login", { state: { from: "/" } });
+      return;
     }
+    favorites.toggle(driver.driverId, name);
   };
-
-  const removeFavorite = (driver) => {
-    if (user) {
-      removeFavoriteDriver(user.uid, driver.Driver.driverId)
-        .then(() => {
-          setAlert({
-            visible: true,
-            message: "Removed from your favorite drivers",
-            color: "success",
-          });
-          setFavoriteDrivers(
-            favoriteDrivers.filter((id) => id !== driver.Driver.driverId)
-          );
-        })
-        .catch(() => {
-          setAlert({
-            visible: true,
-            message:
-              "An error occurred while removing your favorite driver! Please try again later.",
-            color: "danger",
-          });
-        });
-    }
-  };
-
-  // Fetch the user's saved favorites on mount.
-  useEffect(() => {
-    if (user) {
-      getFavoriteDrivers(user.uid)
-        .then((drivers) => setFavoriteDrivers(drivers))
-        .catch((error) =>
-          console.error("Error fetching favorite drivers", error)
-        );
-    }
-  }, [user]);
-
-  // Fetch standings on mount. Jolpica is the Ergast-compatible successor and supports CORS directly.
-  useEffect(() => {
-    axios
-      .get("https://api.jolpi.ca/ergast/f1/current/driverStandings.json")
-      .then((response) => {
-        setApiIsDown(false);
-        setDriverStandings(
-          response.data.MRData.StandingsTable.StandingsLists[0].DriverStandings
-        );
-      })
-      .catch((error) => {
-        setApiIsDown(true);
-        console.error("F1 data API unavailable", error);
-      });
-
-    axios
-      .get("https://api.jolpi.ca/ergast/f1/current/constructorStandings.json")
-      .then((response) => {
-        setConstructorStandings(
-          response.data.MRData.StandingsTable.StandingsLists[0]
-            .ConstructorStandings
-        );
-      })
-      .catch((error) => {
-        console.error("Constructor standings unavailable", error);
-      });
-  }, []);
-
-  const season =
-    driverStandings.length > 0 ? new Date().getFullYear() : "";
-
-  const activeEmpty =
-    tab === "drivers"
-      ? driverStandings.length === 0
-      : constructorStandings.length === 0;
 
   return (
-    <section className="glass panel">
+    <table className="dtable">
+      <caption className="visually-hidden">Driver championship standings</caption>
+      <thead>
+        <tr>
+          {enabled && (
+            <th scope="col">
+              <span className="visually-hidden">Favorite</span>
+            </th>
+          )}
+          <th scope="col">Pos</th>
+          <th scope="col">Driver</th>
+          <th scope="col" className="hide-sm">Team</th>
+          <th scope="col" className="num">Pts</th>
+          <th scope="col" className="num hide-sm">Gap</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((row) => {
+          const d = row.Driver;
+          const name = `${d.givenName} ${d.familyName}`;
+          const isFav = favorites.isFavorite(d.driverId);
+          const pos = Number(row.position ?? row.positionText) || 0;
+          const gap = leaderPts - Number(row.points);
+          return (
+            <tr key={d.driverId} className={pos === 1 ? "is-leader" : ""}>
+              {enabled && (
+                <td className="cell-star">
+                  <button
+                    type="button"
+                    className={`star-btn ${isFav ? "star-btn--on" : ""}`}
+                    aria-pressed={isFav}
+                    aria-label={`Favorite ${name}`}
+                    onClick={() => onStar(d)}
+                  >
+                    {isFav ? <FaStar aria-hidden="true" /> : <FaRegStar aria-hidden="true" />}
+                  </button>
+                </td>
+              )}
+              <td>
+                <Pos pos={pos || row.positionText} />
+              </td>
+              <th scope="row" className="strong">
+                <span className="cell-inline">
+                  <Flag code={nationalityToCode[d.nationality]} name={d.nationality} />
+                  <Link className="driver-link" to={`/driver/${d.driverId}`}>
+                    <span className="hide-sm">{d.givenName} </span>
+                    <span className="show-sm">{d.givenName.charAt(0)}. </span>
+                    {d.familyName}
+                  </Link>
+                </span>
+              </th>
+              <td className="hide-sm">{row.Constructors?.[0]?.name}</td>
+              <td className="num">{row.points}</td>
+              <td className="num num--dim hide-sm">{gap > 0 ? `−${gap}` : "—"}</td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  );
+}
+
+function TeamsTable({ rows }) {
+  return (
+    <table className="dtable">
+      <caption className="visually-hidden">Constructor championship standings</caption>
+      <thead>
+        <tr>
+          <th scope="col">Pos</th>
+          <th scope="col">Team</th>
+          <th scope="col" className="num">Wins</th>
+          <th scope="col" className="num">Pts</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((team) => {
+          const pos = Number(team.position) || 0;
+          return (
+            <tr key={team.Constructor.constructorId} className={pos === 1 ? "is-leader" : ""}>
+              <td>
+                <Pos pos={pos || team.positionText} />
+              </td>
+              <th scope="row" className="strong">
+                <span className="cell-inline">
+                  <Flag
+                    code={nationalityToCode[team.Constructor.nationality]}
+                    name={team.Constructor.nationality}
+                  />
+                  {team.Constructor.name}
+                </span>
+              </th>
+              <td className="num">{team.wins}</td>
+              <td className="num">{team.points}</td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  );
+}
+
+const StandingsBox = ({ setAlert }) => {
+  const [tab, setTab] = useState("drivers");
+  const drivers = useQuery({ queryKey: ["standings", "drivers"], queryFn: fetchDriverStandings });
+  // Only fetch teams once that tab is opened — saves a request on every visit.
+  const teams = useQuery({
+    queryKey: ["standings", "teams"],
+    queryFn: fetchConstructorStandings,
+    enabled: tab === "teams",
+  });
+
+  const active = tab === "drivers" ? drivers : teams;
+  const meta = drivers.data ?? teams.data;
+
+  const tabs = [
+    ["drivers", "Drivers"],
+    ["teams", "Teams"],
+  ];
+
+  return (
+    <section className="glass panel" aria-labelledby="standings-title">
       <div className="panel__head">
         <div>
-          <span className="eyebrow">Championship {season}</span>
-          <h2 className="panel__title">Standings</h2>
+          <span className="eyebrow">
+            Championship {meta?.season ?? ""}
+            {meta?.round ? ` · after round ${meta.round}` : ""}
+          </span>
+          <h2 className="panel__title" id="standings-title">
+            Standings
+          </h2>
         </div>
         <div className="seg" role="tablist" aria-label="Standings type">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={tab === "drivers"}
-            className={`seg__btn ${tab === "drivers" ? "is-active" : ""}`}
-            onClick={() => setTab("drivers")}
-          >
-            Drivers
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={tab === "constructors"}
-            className={`seg__btn ${tab === "constructors" ? "is-active" : ""}`}
-            onClick={() => setTab("constructors")}
-          >
-            Teams
-          </button>
+          {tabs.map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              role="tab"
+              id={`tab-${id}`}
+              aria-selected={tab === id}
+              aria-controls="standings-panel"
+              tabIndex={tab === id ? 0 : -1}
+              className={`seg__btn ${tab === id ? "is-active" : ""}`}
+              onClick={() => setTab(id)}
+              onKeyDown={(e) => {
+                if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+                  const next = tab === "drivers" ? "teams" : "drivers";
+                  setTab(next);
+                  document.getElementById(`tab-${next}`)?.focus();
+                }
+              }}
+            >
+              {label}
+            </button>
+          ))}
         </div>
       </div>
 
-      {apiIsDown ? (
-        <div className="state">
-          <h3>Standings unavailable</h3>
-          <p>The F1 data API isn't responding right now. Please try again later.</p>
-        </div>
-      ) : activeEmpty ? (
-        <div className="state">
-          <div className="spinner" />
-          <p>Loading standings…</p>
-        </div>
-      ) : tab === "drivers" ? (
-        <div className="panel__scroll">
-          <table className="dtable">
-            <thead>
-              <tr>
-                <th aria-label="Favorite"></th>
-                <th>Pos</th>
-                <th>Driver</th>
-                <th>Nationality</th>
-                <th>Constructor</th>
-                <th>Pts</th>
-              </tr>
-            </thead>
-            <tbody>
-              {driverStandings.map((driver, index) => {
-                const isFav = favoriteDrivers.includes(driver.Driver.driverId);
-                const pos = index + 1;
-                return (
-                  <tr key={driver.Driver.driverId}>
-                    <td>
-                      <button
-                        className={`star-btn ${isFav ? "star-btn--on" : ""}`}
-                        aria-label={
-                          isFav ? "Remove favorite" : "Add favorite"
-                        }
-                        onClick={() =>
-                          isFav ? removeFavorite(driver) : addFavorite(driver)
-                        }
-                      >
-                        {isFav ? <FaStar /> : <FaRegStar />}
-                      </button>
-                    </td>
-                    <td>
-                      <span className={`pos ${pos <= 3 ? `pos--${pos}` : ""}`}>
-                        {pos}
-                      </span>
-                    </td>
-                    <td className="strong">
-                      <button
-                        className="driver-link"
-                        onClick={() =>
-                          navigate(`/driver/${driver.Driver.driverId}`)
-                        }
-                      >
-                        {driver.Driver.givenName.charAt(0)}.{" "}
-                        {driver.Driver.familyName}
-                      </button>
-                    </td>
-                    <td>
-                      <span className="cell-inline">
-                        <Flag
-                          code={nationalityToCode[driver.Driver.nationality]}
-                          name={driver.Driver.nationality}
-                        />
-                        {driver.Driver.nationality}
-                      </span>
-                    </td>
-                    <td>{driver.Constructors[0].name}</td>
-                    <td className="num">{driver.points}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      ) : (
-        <div className="panel__scroll">
-          <table className="dtable">
-            <thead>
-              <tr>
-                <th>Pos</th>
-                <th>Constructor</th>
-                <th>Nationality</th>
-                <th>Wins</th>
-                <th>Pts</th>
-              </tr>
-            </thead>
-            <tbody>
-              {constructorStandings.map((team, index) => {
-                const pos = index + 1;
-                return (
-                  <tr key={team.Constructor.constructorId}>
-                    <td>
-                      <span className={`pos ${pos <= 3 ? `pos--${pos}` : ""}`}>
-                        {pos}
-                      </span>
-                    </td>
-                    <td className="strong">{team.Constructor.name}</td>
-                    <td>
-                      <span className="cell-inline">
-                        <Flag
-                          code={nationalityToCode[team.Constructor.nationality]}
-                          name={team.Constructor.nationality}
-                        />
-                        {team.Constructor.nationality}
-                      </span>
-                    </td>
-                    <td className="num">{team.wins}</td>
-                    <td className="num">{team.points}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <div
+        className="panel__scroll"
+        id="standings-panel"
+        role="tabpanel"
+        aria-labelledby={`tab-${tab}`}
+        tabIndex={0}
+      >
+        {active.isPending ? (
+          <SkeletonRows rows={10} label="Loading standings" />
+        ) : active.isError ? (
+          <QueryError what="Standings" error={active.error} onRetry={active.refetch} />
+        ) : active.data.rows.length === 0 ? (
+          <State kind="empty" title="No standings yet">
+            The championship table appears after the first race of the season.
+          </State>
+        ) : tab === "drivers" ? (
+          <DriversTable rows={active.data.rows} setAlert={setAlert} />
+        ) : (
+          <TeamsTable rows={active.data.rows} />
+        )}
+      </div>
     </section>
   );
 };

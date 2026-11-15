@@ -1,432 +1,375 @@
-import React, { useEffect, useState, useRef } from "react";
-import axios from "axios";
-import "leaflet/dist/leaflet.css";
+import { useQueries, useQuery } from "@tanstack/react-query";
+import { FaFlagCheckered, FaCheck, FaRoute } from "react-icons/fa6";
+import { fetchCircuitWinners, fetchNextRace } from "../api/f1";
+import { fetchWeather, weatherEnabled } from "../api/media";
+import { findCircuit, circuitLengthKm, loadCircuits } from "../utils/circuits";
 import {
-  FaRegCalendar,
-  FaRegClock,
-  FaHourglassHalf,
-  FaFlagCheckered,
-  FaTrophy,
-  FaTemperatureHalf,
-  FaWind,
-  FaDroplet,
-} from "react-icons/fa6";
-import geojsonFile from "../extra/f1-circuits.geojson";
+  countdownParts,
+  fmtDate,
+  fmtDay,
+  fmtTime,
+  getSessions,
+  localTimeZone,
+  raceStart,
+  relativeTime,
+  sessionStatus,
+  shortName,
+  splitRaceName,
+  ymd,
+} from "../utils/race";
+import { Flag, countryToCode } from "../utils/flags";
+import { useNow } from "../hooks/useNow";
+import CircuitTrack from "./CircuitTrack";
+import { QueryError, Skeleton, State } from "./State";
 
-// --- helpers ----------------------------------------------------------------
-const precipLabel = (v) => {
-  if (v === undefined || v === null) return "?";
-  if (v === 0) return "None";
-  if (v < 0.05) return "Very Low";
-  if (v < 0.1) return "Low";
-  if (v < 0.4) return "Medium";
-  return "High";
-};
-const isWet = (label) => label === "Medium" || label === "High";
+const FORECAST_WINDOW_DAYS = 14;
+const HISTORY_YEARS = 4;
 
-const NextRaceBox = () => {
-  const [geojsonData, setGeojsonData] = useState(null);
-  const [nextRaceAvailability, setNextRaceAvailability] = useState(true);
-  const [lastWinners, setLastWinners] = useState([]);
-  const [nextCircuit, setNextCircuit] = useState(null); // [circuito, data, horas]
-  const [circuitLatitude, setCircuitLatitude] = useState(null);
-  const [circuitLongitude, setCircuitLongitude] = useState(null);
-  const [nextRaceWeatherData, setNextRaceWeatherData] = useState(null);
-  const [previousRaceWeatherData, setPreviousRaceWeatherData] = useState(null);
-  const [countdown, setCountdown] = useState(null); // { days, hours, minutes, seconds } | { live: true }
-  const mapRef = useRef(null);
+// ---- Countdown + weekend schedule ------------------------------------------
 
-  const getWeatherData = async (
-    latitude,
-    longitude,
-    nextRaceDate,
-    previousRaceDates
-  ) => {
-    const apiKey = import.meta.env.REACT_APP_WEATHER_API_KEY;
-    const nextRaceWeatherData = [];
-    const previousRaceWeatherData = [];
-
-    // Fetch next race weather data
-    try {
-      const nextRaceResponse = await axios.get(
-        `https://api.worldweatheronline.com/premium/v1/weather.ashx?q=${latitude},${longitude}&date=${nextRaceDate}&format=json&key=${apiKey}`
-      );
-
-      const nextRaceDailyWeather = nextRaceResponse.data.data.weather[0];
-      const nextRaceHourlyWeather = nextRaceDailyWeather.hourly;
-
-      const avg = (arr, prop) =>
-        arr.reduce((sum, data) => sum + Number(data[prop]), 0) / arr.length;
-
-      nextRaceWeatherData.push({
-        date: nextRaceDailyWeather.date,
-        temperature: avg(nextRaceHourlyWeather, "tempC"),
-        pressure: avg(nextRaceHourlyWeather, "pressure"),
-        precipitationIntensity: avg(nextRaceHourlyWeather, "precipMM"),
-        windSpeed: avg(nextRaceHourlyWeather, "windspeedKmph"),
-      });
-    } catch (error) {
-      console.error("Error fetching next race weather data", error);
-    }
-
-    // Fetch previous races weather data
-    try {
-      for (const date of previousRaceDates) {
-        const previousRaceResponse = await axios.get(
-          `https://api.worldweatheronline.com/premium/v1/past-weather.ashx?q=${latitude},${longitude}&date=${date}&format=json&key=${apiKey}`
-        );
-
-        const previousRaceDailyWeather =
-          previousRaceResponse.data.data.weather[0];
-        const previousRaceHourlyWeather = previousRaceDailyWeather.hourly;
-
-        const avg = (arr, prop) =>
-          arr.reduce((sum, data) => sum + Number(data[prop]), 0) / arr.length;
-
-        previousRaceWeatherData.push({
-          date: previousRaceDailyWeather.date,
-          temperature: avg(previousRaceHourlyWeather, "tempC"),
-          pressure: avg(previousRaceHourlyWeather, "pressure"),
-          precipitationIntensity: avg(previousRaceHourlyWeather, "precipMM"),
-          windSpeed: avg(previousRaceHourlyWeather, "windspeedKmph"),
-        });
-      }
-    } catch (error) {
-      console.error("Error fetching previous races weather data", error);
-    }
-
-    return { nextRaceWeatherData, previousRaceWeatherData };
-  };
-
-  // Load the GeoJSON file once on mount.
-  useEffect(() => {
-    fetch(geojsonFile)
-      .then((response) => response.json())
-      .then((data) => setGeojsonData(data));
-  }, []);
-
-  // Countdown to the race, updated every second.
-  useEffect(() => {
-    if (nextCircuit && nextCircuit[1]) {
-      const iso = nextCircuit[2]
-        ? `${nextCircuit[1]}T${nextCircuit[2]}`
-        : nextCircuit[1];
-      const raceDate = new Date(iso);
-
-      const updateCountdown = () => {
-        const timeDifference = raceDate - new Date();
-        if (timeDifference > 0) {
-          setCountdown({
-            days: Math.floor(timeDifference / (1000 * 60 * 60 * 24)),
-            hours: Math.floor(
-              (timeDifference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
-            ),
-            minutes: Math.floor((timeDifference % (1000 * 60 * 60)) / (1000 * 60)),
-            seconds: Math.floor((timeDifference % (1000 * 60)) / 1000),
-          });
-        } else {
-          setCountdown({ live: true });
-        }
-      };
-
-      updateCountdown();
-      const timer = setInterval(updateCountdown, 1000);
-      return () => clearInterval(timer);
-    }
-  }, [nextCircuit]);
-
-  // Fetch weather once we have the circuit coordinates and race date.
-  useEffect(() => {
-    if (nextCircuit && circuitLatitude && circuitLongitude) {
-      const toYmd = (d) => {
-        const date = new Date(d);
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, "0");
-        const day = String(date.getDate()).padStart(2, "0");
-        return `${year}-${month}-${day}`;
-      };
-
-      const nextRaceDate = toYmd(nextCircuit[1]);
-      const lastFiveRaceDates = lastWinners.map((winner) => toYmd(winner.date));
-
-      getWeatherData(
-        circuitLatitude,
-        circuitLongitude,
-        nextRaceDate,
-        lastFiveRaceDates
-      )
-        .then(({ nextRaceWeatherData, previousRaceWeatherData }) => {
-          if (
-            nextRaceWeatherData.length > 0 ||
-            previousRaceWeatherData.length > 0
-          ) {
-            setNextRaceWeatherData(nextRaceWeatherData[0]);
-            setPreviousRaceWeatherData(previousRaceWeatherData);
-          } else {
-            setNextRaceWeatherData(null);
-            setPreviousRaceWeatherData(null);
-          }
-        })
-        .catch((error) => {
-          console.error(error);
-          setNextRaceWeatherData(null);
-          setPreviousRaceWeatherData(null);
-        });
-    }
-    // lastWinners must be a dependency: it loads asynchronously after the
-    // circuit data, and its dates drive the previous-race weather lookup.
-    // Without it the historical rows are fetched with an empty date list.
-  }, [nextCircuit, circuitLatitude, circuitLongitude, lastWinners]);
-
-  // Build the map and fetch the next race once GeoJSON is ready.
-  useEffect(() => {
-    if (!geojsonData) return;
-    // Jolpica is the Ergast-compatible successor (Ergast shut down early 2025).
-    const ergastBase = "https://api.jolpi.ca/ergast/f1";
-    let cancelled = false;
-
-    // Leaflet is large — import dynamically to keep it out of the initial bundle.
-    (async () => {
-      const L = (await import("leaflet")).default;
-      if (cancelled) return;
-
-      if (mapRef.current) {
-        mapRef.current.remove();
-      }
-
-      mapRef.current = L.map("map", { zoomControl: true, attributionControl: true })
-        .setView([30, 10], 2);
-
-      // Dark CARTO tiles match the app theme and support CORS directly.
-      L.tileLayer(
-        "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-        {
-          maxZoom: 19,
-          subdomains: "abcd",
-          attribution: "&copy; OpenStreetMap &copy; CARTO",
-        }
-      ).addTo(mapRef.current);
-
-      const drawCircuit = (circuit) => {
-        const layer = L.geoJSON(circuit, {
-          style: { color: "#ff2b39", weight: 3, opacity: 0.95 },
-        }).addTo(mapRef.current);
-        mapRef.current.fitBounds(layer.getBounds(), { padding: [24, 24] });
-      };
-
-      const handleRace = (race, isNext) => {
-        const circuitName = race.Circuit.circuitName;
-        const circuitID = race.Circuit.circuitId;
-        const circuit = geojsonData.features.find(
-          (feature) => feature.properties.Name === circuitName
-        );
-        setNextCircuit([circuitName, race.date, race.time]);
-        setCircuitLatitude(race.Circuit.Location.lat);
-        setCircuitLongitude(race.Circuit.Location.long);
-
-        if (circuit) {
-          drawCircuit(circuit);
-          axios
-            .get(`${ergastBase}/circuits/${circuitID}/results/1.json`)
-            .then((response) => {
-              const races = response.data.MRData.RaceTable.Races;
-              const winners = races.slice(-5).map((r) => ({
-                ...r.Results[0],
-                season: r.season,
-                date: r.date,
-              }));
-              setLastWinners(winners);
-            });
-        }
-      };
-
-      axios.get(`${ergastBase}/current/next.json`).then((response) => {
-        const races = response.data.MRData.RaceTable.Races;
-        if (races.length > 0) {
-          handleRace(races[0], true);
-        } else {
-          // Off-season — show the last race instead.
-          setNextRaceAvailability(false);
-          axios.get(`${ergastBase}/current/last.json`).then((res) => {
-            handleRace(res.data.MRData.RaceTable.Races[0], false);
-          });
-        }
-      });
-    })();
-
-    // Only rebuild the map when the geojson loads. This effect *sets*
-    // circuitLatitude/Longitude; depending on them too would tear down and
-    // recreate the map and re-fetch the race on every coordinate update.
-    return () => {
-      cancelled = true;
-    };
-  }, [geojsonData]);
-
-  const year = nextCircuit ? new Date(nextCircuit[1]).getFullYear() : "";
-
-  // Combined weather table rows: upcoming race + historical races.
-  const weatherRows = [];
-  if (nextRaceWeatherData) {
-    weatherRows.push({
-      key: "next",
-      label: "Next race",
-      winner: "—",
-      ...nextRaceWeatherData,
-    });
-  }
-  if (previousRaceWeatherData) {
-    previousRaceWeatherData
-      .slice()
-      .sort((a, b) => new Date(b.date) - new Date(a.date))
-      .forEach((data) => {
-        const y = new Date(data.date).getFullYear();
-        const winner = lastWinners.find((w) => w.season === String(y));
-        weatherRows.push({
-          key: data.date,
-          label: String(y),
-          winner: winner
-            ? `${winner.Driver.givenName.charAt(0)}. ${winner.Driver.familyName}`
-            : "N/A",
-          ...data,
-        });
-      });
-  }
+function Countdown({ race, now }) {
+  const start = raceStart(race);
+  const sessions = getSessions(race);
+  const raceSession = sessions.find((s) => s.isRace);
+  const status = sessionStatus(raceSession, now);
+  const parts = countdownParts(start - now);
 
   return (
-    <section className="glass panel">
+    <div className="countdown-block">
+      <span className="stat__label">
+        {status === "upcoming" ? "Lights out in" : status === "live" ? "Right now" : "Race"}
+      </span>
+
+      {status === "upcoming" ? (
+        <div
+          className="countdown"
+          role="timer"
+          aria-label={`Race starts ${fmtDate(start)} at ${fmtTime(start)}`}
+        >
+          {[
+            ["days", "Days"],
+            ["hours", "Hrs"],
+            ["minutes", "Min"],
+            ["seconds", "Sec"],
+          ].map(([k, label]) => (
+            <div className="countdown__seg" key={k} aria-hidden="true">
+              <div className="countdown__num">{String(parts[k]).padStart(2, "0")}</div>
+              <span className="countdown__unit">{label}</span>
+            </div>
+          ))}
+        </div>
+      ) : status === "live" ? (
+        <div className="countdown--live">
+          <span className="live-dot" aria-hidden="true" />
+          Race in progress
+        </div>
+      ) : (
+        <div className="countdown--done">
+          <FaFlagCheckered className="ico" aria-hidden="true" />
+          Chequered flag — results land shortly
+        </div>
+      )}
+
+      <p className="countdown__when">
+        {fmtDate(start)} · {fmtTime(start)}
+        <span className="text-faint"> ({localTimeZone()})</span>
+      </p>
+    </div>
+  );
+}
+
+function WeekendSchedule({ race, now }) {
+  const sessions = getSessions(race);
+  const nextKey = sessions.find((s) => sessionStatus(s, now) !== "done")?.key;
+
+  return (
+    <div>
+      <span className="stat__label">Weekend schedule</span>
+      <ol className="sessions">
+        {sessions.map((s) => {
+          const status = sessionStatus(s, now);
+          return (
+            <li
+              key={s.key}
+              className={`sessions__item sessions__item--${status} ${
+                s.key === nextKey ? "is-next" : ""
+              }`}
+            >
+              <span className="sessions__dot" aria-hidden="true">
+                {status === "done" && <FaCheck />}
+              </span>
+              <span className="sessions__label">
+                {s.label}
+                {status === "live" && <span className="badge badge--live">Live</span>}
+                {s.key === nextKey && status === "upcoming" && (
+                  <span className="visually-hidden"> (next session)</span>
+                )}
+              </span>
+              <span className="sessions__time">
+                {fmtDay(s.start)} · {s.hasTime ? fmtTime(s.start) : "TBC"}
+              </span>
+            </li>
+          );
+        })}
+      </ol>
+    </div>
+  );
+}
+
+// ---- Track map --------------------------------------------------------------
+
+function TrackMap({ race }) {
+  const circuits = useQuery({
+    queryKey: ["circuits"],
+    queryFn: loadCircuits,
+    staleTime: Infinity,
+    gcTime: Infinity,
+  });
+  const feature = findCircuit(circuits.data, race.Circuit);
+  const length = circuitLengthKm(feature);
+
+  return (
+    <figure className="trackmap">
+      {circuits.isPending ? (
+        <Skeleton className="trackmap__skeleton" height="100%" radius={16} />
+      ) : circuits.isError ? (
+        <QueryError what="Track map" error={circuits.error} onRetry={circuits.refetch} compact />
+      ) : feature ? (
+        <CircuitTrack feature={feature} label={`Track layout of ${race.Circuit.circuitName}`} />
+      ) : (
+        <State kind="empty" icon={FaRoute} title="Layout coming soon" compact>
+          We don't have a track map for {race.Circuit.circuitName} yet.
+        </State>
+      )}
+      <figcaption className="trackmap__caption">
+        <span>{race.Circuit.circuitName}</span>
+        {feature && (
+          <span className="trackmap__facts">
+            {length && <span>{length} km</span>}
+            {feature.properties.firstgp && <span>First GP {feature.properties.firstgp}</span>}
+          </span>
+        )}
+      </figcaption>
+    </figure>
+  );
+}
+
+// ---- Weather + past winners -------------------------------------------------
+
+const RainCell = ({ w }) => {
+  if (!w) return <span className="text-faint">—</span>;
+  if (w.rainChance !== null) {
+    const wet = w.rainChance >= 40;
+    return <span className={`pill ${wet ? "pill--wet" : ""}`}>{w.rainChance}%</span>;
+  }
+  return w.rainMm < 0.2 ? (
+    <span className="pill pill--none">Dry</span>
+  ) : (
+    <span className="pill pill--wet">{w.rainMm.toFixed(1)} mm</span>
+  );
+};
+
+function WeatherHistory({ race, isNext, now }) {
+  const lat = race.Circuit.Location.lat;
+  const lng = race.Circuit.Location.long;
+  const start = raceStart(race);
+  const daysOut = (start - now) / 86400000;
+  const forecastOpen = isNext && daysOut <= FORECAST_WINDOW_DAYS && daysOut > -1;
+
+  const winners = useQuery({
+    queryKey: ["circuitWinners", race.Circuit.circuitId],
+    queryFn: ({ signal }) => fetchCircuitWinners(race.Circuit.circuitId, HISTORY_YEARS + 1, { signal }),
+    staleTime: 60 * 60 * 1000,
+  });
+
+  // Previous editions only — drop this season's race if it's already run.
+  const history = (winners.data ?? [])
+    .filter((w) => w.season !== race.season)
+    .slice(0, HISTORY_YEARS);
+
+  const forecast = useQuery({
+    queryKey: ["weather", lat, lng, race.date, "forecast"],
+    queryFn: ({ signal }) => fetchWeather({ lat, lng, date: race.date }, { signal }),
+    enabled: weatherEnabled && forecastOpen,
+    staleTime: 60 * 60 * 1000,
+  });
+
+  const past = useQueries({
+    queries: history.map((h) => ({
+      queryKey: ["weather", lat, lng, h.date, "past"],
+      queryFn: ({ signal }) => fetchWeather({ lat, lng, date: ymd(h.date), past: true }, { signal }),
+      enabled: weatherEnabled,
+      staleTime: Infinity,
+    })),
+  });
+
+  if (winners.isPending) {
+    return (
+      <div className="skeleton-rows" role="status">
+        <span className="visually-hidden">Loading past results</span>
+        {Array.from({ length: HISTORY_YEARS + 1 }, (_, i) => (
+          <Skeleton key={i} height={34} />
+        ))}
+      </div>
+    );
+  }
+  if (winners.isError) {
+    return <QueryError what="Past results" error={winners.error} onRetry={winners.refetch} compact />;
+  }
+
+  const cell = (q, render) =>
+    !weatherEnabled ? null : q?.isPending && q.fetchStatus !== "idle" ? (
+      <Skeleton width={42} />
+    ) : q?.data ? (
+      render(q.data)
+    ) : (
+      <span className="text-faint">—</span>
+    );
+
+  const forecastNote = !weatherEnabled
+    ? "Weather isn't configured on this deployment, so only past winners are shown."
+    : !isNext
+      ? null
+      : !forecastOpen
+        ? `The race-day forecast opens about ${FORECAST_WINDOW_DAYS} days out (${relativeTime(
+            new Date(start.getTime() - FORECAST_WINDOW_DAYS * 86400000),
+            now
+          )}).`
+        : forecast.isError
+          ? "The forecast didn't load. Past conditions are shown below."
+          : null;
+
+  return (
+    <>
+      <div className="dtable-wrap">
+        <table className="dtable dtable--compact">
+          <caption className="visually-hidden">
+            Race-day weather and past winners at {race.Circuit.circuitName}
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Year</th>
+              <th scope="col">Winner</th>
+              {weatherEnabled && (
+                <>
+                  <th scope="col" className="num">Temp</th>
+                  <th scope="col" className="num hide-sm">Wind</th>
+                  <th scope="col">Rain</th>
+                </>
+              )}
+            </tr>
+          </thead>
+          <tbody>
+            {isNext && forecastOpen && weatherEnabled && (
+              <tr className="is-highlight">
+                <th scope="row">{race.season}</th>
+                <td className="text-faint">Forecast</td>
+                <td className="num">{cell(forecast, (w) => `${w.tempC.toFixed(0)}°C`)}</td>
+                <td className="num hide-sm">{cell(forecast, (w) => `${w.windKmph.toFixed(0)} km/h`)}</td>
+                <td>{cell(forecast, (w) => <RainCell w={w} />)}</td>
+              </tr>
+            )}
+            {history.map((h, i) => (
+              <tr key={h.season}>
+                <th scope="row">{h.season}</th>
+                <td>{shortName(h.driver)}</td>
+                {weatherEnabled && (
+                  <>
+                    <td className="num">{cell(past[i], (w) => `${w.tempC.toFixed(0)}°C`)}</td>
+                    <td className="num hide-sm">{cell(past[i], (w) => `${w.windKmph.toFixed(0)} km/h`)}</td>
+                    <td>{cell(past[i], (w) => <RainCell w={w} />)}</td>
+                  </>
+                )}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {history.length === 0 && (
+        <p className="panel__note">First time racing here — no past results yet.</p>
+      )}
+      {forecastNote && <p className="panel__note">{forecastNote}</p>}
+    </>
+  );
+}
+
+// ---- Panel ------------------------------------------------------------------
+
+function NextRaceSkeleton() {
+  return (
+    <section className="glass panel" aria-busy="true">
+      <span className="visually-hidden" role="status">
+        Loading the next race
+      </span>
+      <div className="panel__head">
+        <div style={{ width: "100%" }}>
+          <Skeleton width={120} height={12} />
+          <Skeleton width="min(520px, 80%)" height={38} style={{ marginTop: 10 }} />
+          <Skeleton width={260} height={14} style={{ marginTop: 10 }} />
+        </div>
+      </div>
+      <div className="nextrace__grid">
+        <Skeleton height={260} radius={18} />
+        <Skeleton height={260} radius={18} />
+        <Skeleton height={260} radius={18} />
+      </div>
+    </section>
+  );
+}
+
+const NextRaceBox = () => {
+  const now = useNow(1000);
+  const { data, isPending, isError, error, refetch } = useQuery({
+    queryKey: ["nextRace"],
+    queryFn: fetchNextRace,
+  });
+
+  if (isPending) return <NextRaceSkeleton />;
+  if (isError) {
+    return (
+      <section className="glass panel">
+        <QueryError what="The next race" error={error} onRetry={refetch} />
+      </section>
+    );
+  }
+
+  const { race, isNext } = data;
+  const [accent, rest] = splitRaceName(race.raceName);
+  const { Location } = race.Circuit;
+
+  return (
+    <section className="glass panel" aria-labelledby="nextrace-title">
       <div className="panel__head">
         <div>
           <span className="eyebrow">
-            {nextRaceAvailability ? "Next race" : "Off season · last race"}
+            {isNext ? `Round ${race.round} · Next race` : `Season complete · Final round`}
           </span>
-          <h1 className="nextrace__title">
-            {nextCircuit ? (
-              <>
-                {year} <em>{nextCircuit[0]}</em> Grand Prix
-              </>
-            ) : (
-              "Loading race…"
-            )}
+          <h1 className="nextrace__title" id="nextrace-title">
+            <em>{accent}</em>
+            {rest}
           </h1>
+          <p className="nextrace__sub">
+            <Flag code={countryToCode[Location.country]} name={Location.country} />
+            {Location.locality}, {Location.country}
+          </p>
         </div>
       </div>
 
       <div className="nextrace__grid">
-        {/* Left: key stats + countdown */}
         <div className="stat-stack">
-          <div className="stat">
-            <span className="stat__label">
-              <FaRegCalendar className="ico" />
-              Date
-            </span>
-            <span className="stat__value">
-              {nextCircuit ? nextCircuit[1] : "—"}
-            </span>
-          </div>
-          <div className="stat">
-            <span className="stat__label">
-              <FaRegClock className="ico" />
-              Time
-            </span>
-            <span className="stat__value">
-              {nextCircuit && nextCircuit[2]
-                ? nextCircuit[2].replace("Z", " UTC")
-                : "TBA"}
-            </span>
-          </div>
-
-          <span className="stat__label">
-            <FaHourglassHalf className="ico" />
-            Countdown
-          </span>
-          {countdown && countdown.live ? (
-            <div className="countdown--live">
-              <FaFlagCheckered className="ico" />
-              Lights out!
-            </div>
-          ) : countdown ? (
-            <div className="countdown">
-              {[
-                ["days", "Days"],
-                ["hours", "Hrs"],
-                ["minutes", "Min"],
-                ["seconds", "Sec"],
-              ].map(([k, label]) => (
-                <div className="countdown__seg" key={k}>
-                  <div className="countdown__num">
-                    {String(countdown[k]).padStart(2, "0")}
-                  </div>
-                  <span className="countdown__unit">{label}</span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-dim">Calculating…</div>
-          )}
+          <Countdown race={race} now={now} />
+          <WeekendSchedule race={race} now={now} />
         </div>
 
-        {/* Middle: circuit map (always rendered so Leaflet can mount) */}
         <div className="nextrace__map-col">
-          <div id="map" className="map" />
+          <TrackMap race={race} />
         </div>
 
-        {/* Right: weather */}
         <div className="nextrace__weather-col">
-          <span className="eyebrow" style={{ marginBottom: 12 }}>
-            Weather
+          <span className="stat__label">
+            {weatherEnabled ? "Weather & past winners" : "Past winners"}
           </span>
-          {weatherRows.length > 0 ? (
-            <div className="dtable-wrap">
-            <table className="dtable">
-              <thead>
-                <tr>
-                  <th>When</th>
-                  <th><FaTrophy className="ico" />Winner</th>
-                  <th><FaTemperatureHalf className="ico" />Temp</th>
-                  <th><FaWind className="ico" />Wind</th>
-                  <th><FaDroplet className="ico" />Rain</th>
-                </tr>
-              </thead>
-              <tbody>
-                {weatherRows.map((row) => {
-                  const label = precipLabel(row.precipitationIntensity);
-                  return (
-                    <tr key={row.key}>
-                      <td className="strong">{row.label}</td>
-                      <td>{row.winner}</td>
-                      <td className="num">
-                        {row.temperature === undefined
-                          ? "?"
-                          : `${row.temperature.toFixed(1)}°C`}
-                      </td>
-                      <td className="num">
-                        {row.windSpeed === undefined
-                          ? "?"
-                          : `${row.windSpeed.toFixed(0)} km/h`}
-                      </td>
-                      <td>
-                        <span
-                          className={`pill ${
-                            label === "None" ? "pill--none" : ""
-                          } ${isWet(label) ? "pill--wet" : ""}`}
-                        >
-                          {label}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-            </div>
-          ) : (
-            <div className="state">
-              <p>
-                Weather forecast isn't available right now (needs the weather API
-                key).
-              </p>
-            </div>
-          )}
+          <WeatherHistory race={race} isNext={isNext} now={now} />
         </div>
       </div>
     </section>

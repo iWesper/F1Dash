@@ -1,93 +1,86 @@
-import React, { useState, useEffect } from "react";
-import axios from "axios";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { FaPlay } from "react-icons/fa6";
 import he from "he";
+import { fetchVideos } from "../api/media";
+import { relativeTime } from "../utils/race";
+import { QueryError, Skeleton, State } from "./State";
+
+/** Hides a broken thumbnail so the frame shows the placeholder background. */
+function Thumb({ src }) {
+  const [broken, setBroken] = useState(false);
+  return broken ? null : (
+    <img src={src} alt="" loading="lazy" decoding="async" onError={() => setBroken(true)} />
+  );
+}
 
 const VideosBox = () => {
-  const [videos, setVideos] = useState([]);
-  const [error, setError] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchVideos = async () => {
-      try {
-        const response = await axios.get(
-          "https://www.googleapis.com/youtube/v3/search",
-          {
-            params: {
-              part: "snippet",
-              channelId: "UCB_qr75-ydFVKSF9Dmo6izg",
-              maxResults: 10,
-              order: "date",
-              type: "video",
-              videoType: "any",
-              key: import.meta.env.REACT_APP_YOUTUBE_API_KEY,
-            },
-          }
-        );
-
-        // Filter out Shorts: titles with emojis or the #shorts hashtag.
-        const filterNoShortsVideos = response.data.items.filter((video) => {
-          const title = video.snippet.title;
-          const hasEmoji = title.match(/[\p{Extended_Pictographic}]/u);
-          const hasShortsHashtag = title.toLowerCase().includes("#shorts");
-          return !hasEmoji && !hasShortsHashtag;
-        });
-
-        setVideos(filterNoShortsVideos.slice(0, 6));
-      } catch (err) {
-        setError("Couldn't load videos. Please try again later.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchVideos();
-  }, []);
+  const { data, isPending, isError, error, refetch } = useQuery({
+    queryKey: ["videos"],
+    queryFn: fetchVideos,
+    staleTime: 30 * 60 * 1000,
+  });
 
   return (
-    <section className="glass panel">
+    <section className="glass panel" aria-labelledby="videos-title">
       <div className="panel__head">
         <div>
           <span className="eyebrow">From the paddock</span>
-          <h2 className="panel__title">Latest Videos</h2>
+          <h2 className="panel__title" id="videos-title">
+            Latest videos
+          </h2>
         </div>
+        <a
+          className="btn btn--ghost btn--sm"
+          href="https://www.youtube.com/@Formula1/videos"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          All videos<span className="visually-hidden"> on YouTube (opens in a new tab)</span>
+        </a>
       </div>
 
-      {loading ? (
-        <div className="state">
-          <div className="spinner" />
-          <p>Loading videos…</p>
-        </div>
-      ) : error ? (
-        <div className="state">
-          <h3>Videos unavailable</h3>
-          <p>{error}</p>
-        </div>
-      ) : videos.length === 0 ? (
-        <div className="state">
-          <p>No recent videos found.</p>
-        </div>
-      ) : (
-        <div className="videos">
-          {videos.map((video) => (
-            <a
-              key={video.id.videoId}
-              target="_blank"
-              rel="noopener noreferrer"
-              href={`https://www.youtube.com/watch?v=${video.id.videoId}`}
-              className="video"
-            >
-              <div className="video__thumb">
-                <img
-                  src={video.snippet.thumbnails.high?.url || video.snippet.thumbnails.default.url}
-                  alt=""
-                  loading="lazy"
-                />
-              </div>
-              <p className="video__title">{he.decode(video.snippet.title)}</p>
-            </a>
+      {isPending ? (
+        <div className="videos" role="status">
+          <span className="visually-hidden">Loading videos</span>
+          {Array.from({ length: 4 }, (_, i) => (
+            <div key={i} aria-hidden="true">
+              <Skeleton height="auto" radius={18} style={{ aspectRatio: "16 / 9" }} />
+              <Skeleton width="85%" style={{ marginTop: 12 }} />
+            </div>
           ))}
         </div>
+      ) : isError ? (
+        <QueryError what="Videos" error={error} onRetry={refetch} />
+      ) : data.length === 0 ? (
+        <State kind="empty" title="No new videos">
+          Nothing's been uploaded recently.
+        </State>
+      ) : (
+        <ul className="videos">
+          {data.map((video) => (
+            <li key={video.id}>
+              <a
+                target="_blank"
+                rel="noopener noreferrer"
+                href={`https://www.youtube.com/watch?v=${video.id}`}
+                className="video"
+              >
+                <span className="video__thumb">
+                  <Thumb src={video.thumb} />
+                  <span className="video__play" aria-hidden="true">
+                    <FaPlay />
+                  </span>
+                </span>
+                <span className="video__title">{he.decode(video.title)}</span>
+                <span className="video__meta">
+                  {relativeTime(new Date(video.publishedAt))}
+                  <span className="visually-hidden"> · opens YouTube in a new tab</span>
+                </span>
+              </a>
+            </li>
+          ))}
+        </ul>
       )}
     </section>
   );

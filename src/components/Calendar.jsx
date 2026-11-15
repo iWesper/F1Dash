@@ -1,76 +1,52 @@
-import { useEffect, useState } from "react";
-import { Link } from "react-router";
-import axios from "axios";
-import { FaArrowLeftLong, FaRegCalendarPlus } from "react-icons/fa6";
+import { useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { FaRegCalendarPlus, FaArrowDown, FaChevronDown, FaTrophy } from "react-icons/fa6";
+import { fetchSchedule, fetchSeasonWinners } from "../api/f1";
 import { Flag, countryToCode } from "../utils/flags";
+import {
+  fmtDay,
+  fmtTime,
+  getSessions,
+  localTimeZone,
+  raceStart,
+  relativeTime,
+  shortName,
+} from "../utils/race";
+import { useDocumentTitle } from "../hooks/useNow";
+import { QueryError, Skeleton, State } from "./State";
 
-// Ergast/Jolpica session keys → human labels. Order doesn't matter: each
-// session is sorted by its own date/time so sprint weekends render correctly.
-const SESSION_LABELS = {
-  FirstPractice: "FP1",
-  SecondPractice: "FP2",
-  ThirdPractice: "FP3",
-  SprintQualifying: "Sprint Quali",
-  SprintShootout: "Sprint Shootout",
-  Sprint: "Sprint",
-  Qualifying: "Qualifying",
-};
-
-// A session's date comes with a separate UTC time (trailing Z). Missing
-// times default to midnight UTC so the date still sorts/renders.
-const toDate = (date, time) => new Date(`${date}T${time || "00:00:00Z"}`);
-
-const fmtDay = (dt) =>
-  dt.toLocaleDateString(undefined, {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-  });
-const fmtTime = (dt) =>
-  dt.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
-
-const getSessions = (race) => {
-  const list = [];
-  for (const key of Object.keys(SESSION_LABELS)) {
-    if (race[key]?.date) {
-      list.push({
-        label: SESSION_LABELS[key],
-        dt: toDate(race[key].date, race[key].time),
-      });
-    }
-  }
-  list.push({ label: "Race", dt: toDate(race.date, race.time), isRace: true });
-  list.sort((a, b) => a.dt - b.dt);
-  return list;
-};
+// ---- .ics export ------------------------------------------------------------
 
 const pad = (n) => String(n).padStart(2, "0");
 const icsStamp = (d) =>
   `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}T${pad(
     d.getUTCHours()
   )}${pad(d.getUTCMinutes())}00Z`;
+// RFC 5545 text escaping: commas/semicolons in LOCATION otherwise split fields.
+const icsText = (s) => s.replace(/\\/g, "\\\\").replace(/[,;]/g, (m) => `\\${m}`);
 
+/** One event per session, so the whole weekend lands in the user's calendar. */
 const downloadIcs = (race) => {
-  const start = toDate(race.date, race.time);
-  const end = new Date(start.getTime() + 2 * 60 * 60 * 1000);
+  const location = icsText(`${race.Circuit.circuitName}, ${race.Circuit.Location.country}`);
+  const events = getSessions(race).flatMap((s) => [
+    "BEGIN:VEVENT",
+    `UID:f1dash-${race.season}-${race.round}-${s.key}@f1dash`,
+    `DTSTAMP:${icsStamp(new Date())}`,
+    `DTSTART:${icsStamp(s.start)}`,
+    `DTEND:${icsStamp(s.end)}`,
+    `SUMMARY:${icsText(`${race.raceName} · ${s.label}`)}`,
+    `LOCATION:${location}`,
+    "END:VEVENT",
+  ]);
   const ics = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
     "PRODID:-//F1 Dash//Race Calendar//EN",
-    "BEGIN:VEVENT",
-    `UID:f1dash-${race.season}-${race.round}@f1dash`,
-    `DTSTAMP:${icsStamp(new Date())}`,
-    `DTSTART:${icsStamp(start)}`,
-    `DTEND:${icsStamp(end)}`,
-    `SUMMARY:${race.raceName}`,
-    `LOCATION:${race.Circuit.circuitName}, ${race.Circuit.Location.country}`,
-    "END:VEVENT",
+    ...events,
     "END:VCALENDAR",
   ].join("\r\n");
 
-  const url = URL.createObjectURL(
-    new Blob([ics], { type: "text/calendar;charset=utf-8" })
-  );
+  const url = URL.createObjectURL(new Blob([ics], { type: "text/calendar;charset=utf-8" }));
   const a = document.createElement("a");
   a.href = url;
   a.download = `${race.raceName.replace(/\s+/g, "_")}.ics`;
@@ -80,148 +56,199 @@ const downloadIcs = (race) => {
   URL.revokeObjectURL(url);
 };
 
-function Calendar() {
-  const [races, setRaces] = useState([]);
-  const [winners, setWinners] = useState({});
-  const [loaded, setLoaded] = useState(false);
-  const [error, setError] = useState(false);
+// ---- Race card --------------------------------------------------------------
 
-  useEffect(() => {
-    axios
-      .get("https://api.jolpi.ca/ergast/f1/current.json")
-      .then((res) => {
-        setRaces(res.data.MRData.RaceTable.Races);
-        setLoaded(true);
-      })
-      .catch((err) => {
-        console.error("Schedule unavailable", err);
-        setError(true);
-        setLoaded(true);
-      });
-
-    // One call returns every completed round's winner (Results[0]).
-    axios
-      .get("https://api.jolpi.ca/ergast/f1/current/results/1.json")
-      .then((res) => {
-        const map = {};
-        res.data.MRData.RaceTable.Races.forEach((race) => {
-          map[race.round] = race.Results?.[0]?.Driver;
-        });
-        setWinners(map);
-      })
-      .catch((err) => console.error("Results unavailable", err));
-  }, []);
-
-  const year = races[0]?.season ?? new Date().getFullYear();
-  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const now = new Date();
-  const nextRound = races.find((r) => toDate(r.date, r.time) >= now)?.round;
+function RaceCard({ race, winner, winnersLoading, isNext, isPast, cardRef, now }) {
+  const start = raceStart(race);
+  const { Location } = race.Circuit;
 
   return (
-    <main className="page calendar">
+    <li
+      ref={cardRef}
+      tabIndex={isNext ? -1 : undefined}
+      className={`glass race-card ${isNext ? "race-card--next" : ""} ${
+        isPast ? "race-card--past" : ""
+      }`}
+      aria-current={isNext ? "date" : undefined}
+    >
+      <div className="race-card__round">
+        <span className="race-card__round-num">{race.round}</span>
+        <span className="race-card__round-word">Round</span>
+      </div>
+
+      <div className="race-card__body">
+        <div className="race-card__heading">
+          <Flag code={countryToCode[Location.country]} name={Location.country} />
+          <h2 className="race-card__name">{race.raceName}</h2>
+          {isNext && <span className="badge badge--next">Next · {relativeTime(start, now)}</span>}
+        </div>
+        <p className="race-card__circuit">
+          {race.Circuit.circuitName} · {Location.locality}, {Location.country}
+        </p>
+
+        {/* Past rounds stay compact: just the race date. */}
+        {isPast ? (
+          <p className="race-card__date">
+            {fmtDay(start)} {start.getFullYear()}
+          </p>
+        ) : (
+          <ul className="race-card__sessions">
+            {getSessions(race).map((s) => (
+              <li className={`sess ${s.isRace ? "sess--race" : ""}`} key={s.key}>
+                <span className="sess__label">{s.label}</span>
+                <span className="sess__time">
+                  {fmtDay(s.start)} · {s.hasTime ? fmtTime(s.start) : "TBC"}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div className="race-card__aside">
+        {isPast ? (
+          winner ? (
+            <div className="race-card__winner">
+              <span className="race-card__winner-label">
+                <FaTrophy aria-hidden="true" /> Winner
+              </span>
+              <strong>{shortName(winner)}</strong>
+            </div>
+          ) : winnersLoading ? (
+            <Skeleton width={110} height={36} />
+          ) : (
+            <span className="text-faint">Result pending</span>
+          )
+        ) : (
+          <button
+            type="button"
+            className="btn"
+            onClick={() => downloadIcs(race)}
+            aria-label={`Add ${race.raceName} weekend to your calendar`}
+          >
+            <FaRegCalendarPlus aria-hidden="true" /> Add to calendar
+          </button>
+        )}
+      </div>
+    </li>
+  );
+}
+
+// ---- Page -------------------------------------------------------------------
+
+function Calendar() {
+  const schedule = useQuery({ queryKey: ["schedule"], queryFn: fetchSchedule });
+  const winners = useQuery({ queryKey: ["seasonWinners"], queryFn: fetchSeasonWinners });
+  const [showPast, setShowPast] = useState(false);
+  const nextRef = useRef(null);
+  const now = new Date();
+
+  const races = schedule.data ?? [];
+  const year = races[0]?.season ?? new Date().getFullYear();
+  useDocumentTitle(`${year} calendar`);
+
+  // A race is "past" once it has a winner or started over 3 hours ago.
+  const isPast = (r) =>
+    Boolean(winners.data?.[r.round]) || raceStart(r) < new Date(now.getTime() - 3 * 3600000);
+  const past = races.filter(isPast);
+  const upcoming = races.filter((r) => !isPast(r));
+  const next = upcoming[0];
+
+  // With past rounds collapsed the next race is already first; once they're
+  // expanded this gets you back to it.
+  const jumpToNext = () => {
+    const el = nextRef.current;
+    if (!el) return;
+    const smooth = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    el.scrollIntoView({ behavior: smooth ? "smooth" : "auto", block: "center" });
+    el.focus({ preventScroll: true });
+  };
+
+  const card = (race) => (
+    <RaceCard
+      key={race.round}
+      race={race}
+      now={now}
+      winner={winners.data?.[race.round]}
+      winnersLoading={winners.isPending}
+      isNext={race.round === next?.round}
+      isPast={isPast(race)}
+      cardRef={race.round === next?.round ? nextRef : undefined}
+    />
+  );
+
+  return (
+    <main className="page calendar" id="main">
       <div className="page__head">
         <div>
           <span className="eyebrow">Season {year}</span>
           <h1 className="page__title">Race calendar</h1>
-          <p className="calendar__tz">All times shown in your timezone · {timeZone}</p>
+          <p className="page__sub">
+            {races.length > 0 && (
+              <>
+                {races.length} rounds · {past.length} complete ·{" "}
+              </>
+            )}
+            Times in your timezone ({localTimeZone()})
+          </p>
         </div>
-        <Link to="/" className="btn btn--ghost">
-          <FaArrowLeftLong /> Dashboard
-        </Link>
+        {next && showPast && (
+          <button type="button" className="btn" onClick={jumpToNext}>
+            <FaArrowDown aria-hidden="true" /> Jump to next race
+          </button>
+        )}
       </div>
 
-      {!loaded ? (
+      {schedule.isPending ? (
+        <ul className="cal-list" role="status" aria-label="Loading the calendar">
+          {Array.from({ length: 4 }, (_, i) => (
+            <li key={i} aria-hidden="true">
+              <Skeleton height={132} radius={24} />
+            </li>
+          ))}
+        </ul>
+      ) : schedule.isError ? (
         <section className="glass panel state-panel">
-          <div className="state">
-            <div className="spinner" />
-            <p>Loading the calendar…</p>
-          </div>
+          <QueryError what="The calendar" error={schedule.error} onRetry={schedule.refetch} />
         </section>
-      ) : error || races.length === 0 ? (
+      ) : races.length === 0 ? (
         <section className="glass panel state-panel">
-          <div className="state">
-            <h3>Calendar unavailable</h3>
-            <p>The F1 schedule API isn't responding right now. Please try again later.</p>
-          </div>
+          <State kind="empty" title="No calendar yet">
+            The schedule for {year} hasn't been published.
+          </State>
         </section>
       ) : (
-        <div className="cal-list">
-          {races.map((race) => {
-            const raceDt = toDate(race.date, race.time);
-            const isNext = race.round === nextRound;
-            const isCompleted = !!winners[race.round] || raceDt < now;
-            const winner = winners[race.round];
+        <>
+          {past.length > 0 && (
+            <button
+              type="button"
+              className="cal-toggle"
+              aria-expanded={showPast}
+              aria-controls="past-races"
+              onClick={() => setShowPast((v) => !v)}
+            >
+              <FaChevronDown aria-hidden="true" className="cal-toggle__chev" />
+              {showPast ? "Hide" : "Show"} {past.length} completed{" "}
+              {past.length === 1 ? "round" : "rounds"}
+            </button>
+          )}
 
-            return (
-              <article
-                key={race.round}
-                className={`glass race-card ${isNext ? "race-card--next" : ""} ${
-                  isCompleted ? "race-card--past" : ""
-                }`}
-              >
-                <div className="race-card__round">
-                  <span className="race-card__round-num">{race.round}</span>
-                  <span className="race-card__round-word">Round</span>
-                </div>
+          {showPast && (
+            <ul className="cal-list cal-list--past" id="past-races">
+              {past.map(card)}
+            </ul>
+          )}
 
-                <div className="race-card__body">
-                  <div className="race-card__heading">
-                    <Flag
-                      code={countryToCode[race.Circuit.Location.country]}
-                      name={race.Circuit.Location.country}
-                    />
-                    <h3 className="race-card__name">{race.raceName}</h3>
-                    {isNext && <span className="badge badge--next">Next</span>}
-                    {isCompleted && !isNext && (
-                      <span className="badge">Completed</span>
-                    )}
-                  </div>
-                  <p className="race-card__circuit">
-                    {race.Circuit.circuitName} · {race.Circuit.Location.locality},{" "}
-                    {race.Circuit.Location.country}
-                  </p>
-
-                  <div className="race-card__sessions">
-                    {getSessions(race).map((s) => (
-                      <div
-                        className={`sess ${s.isRace ? "sess--race" : ""}`}
-                        key={s.label}
-                      >
-                        <span className="sess__label">{s.label}</span>
-                        <span className="sess__time">
-                          {fmtDay(s.dt)} · {fmtTime(s.dt)}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="race-card__aside">
-                  {isCompleted ? (
-                    winner ? (
-                      <div className="race-card__winner">
-                        <span className="eyebrow">Winner</span>
-                        <strong>
-                          {winner.givenName.charAt(0)}. {winner.familyName}
-                        </strong>
-                      </div>
-                    ) : (
-                      <span className="text-dim">Result pending</span>
-                    )
-                  ) : (
-                    <button
-                      type="button"
-                      className="btn"
-                      onClick={() => downloadIcs(race)}
-                    >
-                      <FaRegCalendarPlus /> Add to calendar
-                    </button>
-                  )}
-                </div>
-              </article>
-            );
-          })}
-        </div>
+          {upcoming.length > 0 ? (
+            <ul className="cal-list">{upcoming.map(card)}</ul>
+          ) : (
+            <section className="glass panel state-panel">
+              <State kind="empty" icon={FaTrophy} title="That's a wrap">
+                Every round of {year} has been run. See you next season.
+              </State>
+            </section>
+          )}
+        </>
       )}
     </main>
   );

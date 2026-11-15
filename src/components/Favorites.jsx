@@ -1,83 +1,125 @@
-import { useEffect, useState } from "react";
-import { Link } from "react-router";
-import { FaStar } from "react-icons/fa";
-import { FaArrowLeftLong } from "react-icons/fa6";
+import { FaStar, FaRegStar } from "react-icons/fa6";
 import { useAuth } from "./AuthProvider";
-import { getFavoriteDrivers } from "./FavoritesService";
-import Driver from "./Driver";
+import { useFavorites } from "../hooks/useFavorites";
+import { useDocumentTitle } from "../hooks/useNow";
+import Driver, { DriverSkeleton } from "./Driver";
+import { State } from "./State";
 
-function Favorites() {
-  const { user } = useAuth();
-  const [favoriteDrivers, setFavoriteDrivers] = useState([]);
-  const [loaded, setLoaded] = useState(false);
+const Shell = ({ children, count }) => (
+  <main className="page favorites" id="main">
+    <div className="page__head">
+      <div>
+        <span className="eyebrow">
+          <FaStar className="ico" aria-hidden="true" />
+          Favorites
+        </span>
+        <h1 className="page__title">Your drivers</h1>
+        {count > 0 && (
+          <p className="page__sub">
+            {count} {count === 1 ? "driver" : "drivers"} · season and career stats
+          </p>
+        )}
+      </div>
+    </div>
+    {children}
+  </main>
+);
 
-  useEffect(() => {
-    if (user) {
-      getFavoriteDrivers(user.uid).then((drivers) => {
-        setFavoriteDrivers(drivers);
-        setLoaded(true);
-      });
-    }
-  }, [user]);
+const Panel = ({ children }) => <section className="glass panel state-panel">{children}</section>;
+
+function Favorites({ setAlert }) {
+  useDocumentTitle("Favorites");
+  const { user, enabled, authReady } = useAuth();
+  const favorites = useFavorites({ setAlert });
+  const { query } = favorites;
+
+  if (!enabled) {
+    return (
+      <Shell>
+        <Panel>
+          <State kind="empty" title="Favorites aren't available">
+            Accounts aren't configured on this deployment, so there's nowhere to save
+            favorites.
+          </State>
+        </Panel>
+      </Shell>
+    );
+  }
+
+  // Wait for Firebase to restore the session before deciding "signed out".
+  if (!authReady || (user && query.isPending)) {
+    return (
+      <Shell>
+        <div className="driver-list">
+          <DriverSkeleton />
+        </div>
+      </Shell>
+    );
+  }
 
   if (!user) {
     return (
-      <main className="page">
-        <section className="glass panel state-panel">
-          <div className="state">
-            <h3>Sign in to see your favorites</h3>
-            <p>Save drivers to follow their season and career stats here.</p>
-            <Link to="/login" className="btn btn--primary">
-              Sign in
-            </Link>
-          </div>
-        </section>
-      </main>
+      <Shell>
+        <Panel>
+          <State
+            kind="empty"
+            icon={FaRegStar}
+            title="Sign in to keep your favorites"
+            action={{ label: "Sign in", to: "/login", state: { from: "/favorites" }, primary: true }}
+          >
+            Star drivers in the standings to follow their season and career stats here.
+          </State>
+        </Panel>
+      </Shell>
+    );
+  }
+
+  if (query.isError) {
+    return (
+      <Shell>
+        <Panel>
+          <State
+            kind="error"
+            title="Couldn't load your favorites"
+            action={{ label: "Try again", onClick: () => query.refetch() }}
+          >
+            Your saved drivers are safe — we just couldn't reach them right now.
+          </State>
+        </Panel>
+      </Shell>
+    );
+  }
+
+  if (favorites.ids.length === 0) {
+    return (
+      <Shell>
+        <Panel>
+          <State
+            kind="empty"
+            icon={FaRegStar}
+            title="No favorites yet"
+            action={{ label: "Browse the standings", to: "/", primary: true }}
+          >
+            Tap the star next to a driver in the standings and they'll show up here.
+          </State>
+        </Panel>
+      </Shell>
     );
   }
 
   return (
-    <main className="page favorites">
-      <div className="page__head">
-        <div>
-          <span className="eyebrow">
-            <FaStar className="ico" />
-            Favorites
-          </span>
-          <h1 className="page__title">Your favorite drivers</h1>
-        </div>
-        <Link to="/" className="btn btn--ghost">
-          <FaArrowLeftLong /> Dashboard
-        </Link>
+    <Shell count={favorites.ids.length}>
+      <div className="driver-list">
+        {favorites.ids.map((driverId) => (
+          <Driver
+            key={driverId}
+            driverId={driverId}
+            linkToProfile
+            onRemove={(id, name) => favorites.toggle(id, name)}
+          />
+        ))}
       </div>
-
-      {!loaded ? (
-        <section className="glass panel state-panel">
-          <div className="state">
-            <div className="spinner" />
-            <p>Loading your drivers…</p>
-          </div>
-        </section>
-      ) : favoriteDrivers.length === 0 ? (
-        <section className="glass panel state-panel">
-          <div className="state">
-            <h3>No favorites yet</h3>
-            <p>
-              Tap the star next to a driver in the standings to add them here.
-            </p>
-            <Link to="/" className="btn btn--primary">
-              Browse standings
-            </Link>
-          </div>
-        </section>
-      ) : (
-        <div className="driver-list">
-          {favoriteDrivers.map((driverId) => (
-            <Driver key={driverId} driverId={driverId} />
-          ))}
-        </div>
-      )}
-    </main>
+    </Shell>
   );
 }
 

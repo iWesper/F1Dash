@@ -1,20 +1,16 @@
-import React from "react";
 import StandingsBox from "./StandingsBox";
 import NextRaceBox from "./NextRaceBox";
 import NewsBox from "./NewsBox";
 import VideosBox from "./VideosBox";
 import ErrorBoundary from "./ErrorBoundary";
-import { FaTriangleExclamation } from "react-icons/fa6";
+import { useDocumentTitle } from "../hooks/useNow";
 
+// Each panel owns its loading / error / empty states, so one provider being
+// down never blanks the page (and no global "APIs may fail" banner needed).
 const Dashboard = ({ setAlert }) => {
+  useDocumentTitle(null);
   return (
-    <main className="page">
-      <p className="banner glass">
-        <FaTriangleExclamation size={15} />
-        This app relies on external APIs I don't control — some panels may be
-        unavailable if a provider is down.
-      </p>
-
+    <main className="page" id="main">
       <div className="bento">
         <div className="bento__nextrace">
           <ErrorBoundary label="the next race">
