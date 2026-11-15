@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import axios from "axios";
 import { FaArrowLeftLong, FaRegCalendarPlus } from "react-icons/fa6";
 import { Flag, countryToCode } from "../utils/flags";

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { FcGoogle } from "react-icons/fc";
 import { useAuth } from "../components/AuthProvider";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 
 export const Login = ({ handleRegisterForm }) => {
   const [email, setEmail] = useState("");

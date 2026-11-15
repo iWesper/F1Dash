@@ -1,9 +1,7 @@
 import React, { useEffect, useState, Suspense, lazy } from "react";
-import "./App.css";
 import { AuthProvider } from "./components/AuthProvider";
-import "bootstrap/dist/css/bootstrap.min.css";
-import "../src/css/styles.css";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import "./css/styles.css";
+import { BrowserRouter, Route, Routes } from "react-router";
 import HeaderNav from "./components/HeaderNav";
 import ErrorBoundary from "./components/ErrorBoundary";
 
@@ -55,7 +53,7 @@ function App() {
           <span className="aurora__blob aurora__blob--3" />
         </div>
 
-        <div className="app-shell App">
+        <div className="app-shell">
           <HeaderNav />
 
           {alert.visible && (
