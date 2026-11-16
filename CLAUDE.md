@@ -82,7 +82,10 @@ This is the single most common source of mistakes here.
   a `*` 404.
 - `src/components/` — pages and panels. `Dashboard.jsx` picks a layout from
   the race-week phase (`racePhase` in `utils/race.js`: buildup, weekend,
-  result, offseason; preview any with `?phase=`). It composes `SeasonStrip`,
+  result, offseason; preview any with `?phase=`). The grid is two mirrored
+  rows (lead 4 | map 8, then standings 8 | rail 4); small panels go in the
+  rail at their natural height rather than being stretched, and nothing
+  scrolls inside a panel. It composes `SeasonStrip`,
   `RaceHero` / `CircuitPanel` / `WeatherStrip` (`NextRace.jsx`), `LastRace`,
   `StandingsBox` (timing tower + `TitleFight` chart) and `Paddock`
   (news/videos). `Search.jsx` is the "/" palette; `Prefs.jsx` holds the
@@ -97,7 +100,9 @@ This is the single most common source of mistakes here.
   repainted in the palette by `restyle()`. Falls back to the SVG drawing
   (`CircuitTrack.jsx`) if WebGL or the tile server is unavailable.
 - `src/utils/circuits.js` — circuit layouts from
-  `src/extra/f1-circuits.geojson`, matched by name, then by nearest
+  `src/extra/f1-circuits.geojson` (a copy of
+  [bacinger/f1-circuits](https://github.com/bacinger/f1-circuits); refresh
+  it from there when a new venue joins the calendar), matched by name, then by nearest
   coordinates (names differ between sources, e.g. Losail/Lusail).
 - `src/data/` — team colours and circuit timezones (the API only gives UTC).
 - `src/utils/race.js` — session list, local-time formatting, countdown helpers.

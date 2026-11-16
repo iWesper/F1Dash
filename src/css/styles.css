@@ -262,28 +262,32 @@
 
 /* ---- Dashboard layout -------------------------------------- */
 .dash { display: flex; flex-direction: column; gap: var(--sp-4); }
+/* Two mirrored rows on 12 columns: lead 4 | map 8, then standings 8 | rail 4. */
 .dash__top {
   display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1.25fr) minmax(0, 0.9fr);
+  grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
   gap: var(--sp-4);
 }
 .dash__full { grid-column: 1 / -1; }
 .dash__mid {
   display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 8fr) minmax(0, 4fr);
   gap: var(--sp-4);
   align-items: start;
 }
 .dash__mid--solo { grid-template-columns: minmax(0, 1fr); }
-.dash__top > *, .dash__mid > * { min-width: 0; }
+/* The rail stacks small panels at their own height: nothing stretched. */
+.dash__rail { display: flex; flex-direction: column; gap: var(--sp-4); }
+.dash__rail .panel, .dash__mid > div > .panel { height: auto; }
+.dash__top > *, .dash__mid > *, .dash__rail > * { min-width: 0; }
 @media (max-width: 1100px) {
   .dash__top { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
-  .dash__top > :nth-child(3) { grid-column: 1 / -1; }
   .dash__mid { grid-template-columns: minmax(0, 1fr); }
+  /* Side by side while there's room, so the rail doesn't become a long column. */
+  .dash__rail { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
 }
-@media (max-width: 700px) {
-  .dash__top { grid-template-columns: minmax(0, 1fr); }
-  .dash__top > :nth-child(3) { grid-column: auto; }
+@media (max-width: 760px) {
+  .dash__top, .dash__rail { grid-template-columns: minmax(0, 1fr); }
   .panel { padding: var(--sp-4); }
 }
 
@@ -398,7 +402,7 @@
 .sessions__item.is-next .sessions__mark, .sessions__item--live .sessions__mark { border-color: var(--red); background: var(--red); }
 
 /* ---- Circuit + map ----------------------------------------- */
-.circuit__map { position: relative; flex: 1; min-height: 300px; background: var(--bg); }
+.circuit__map { position: relative; flex: 1; min-height: 340px; background: var(--bg); }
 .circuit__map > .track { position: absolute; inset: 0; width: 100%; height: 100%; padding: var(--sp-5); }
 .circuit__map > .state { position: absolute; inset: 0; }
 .circuit__body { padding: var(--sp-4) var(--sp-5); display: flex; flex-direction: column; gap: var(--sp-2); border-top: 1px solid var(--line); }
@@ -496,7 +500,6 @@
 .facts dd .mono.up { color: var(--green); }
 
 /* ---- Timing tower ------------------------------------------ */
-.standings { max-height: 640px; }
 .tower { display: flex; flex-direction: column; gap: 2px; }
 .tower__row, .tower__head {
   display: grid;
@@ -527,7 +530,23 @@
 .tower__gap { text-align: right; font-size: var(--fs-xs); color: var(--text-dim); }
 .tower__delta { text-align: right; font-size: var(--fs-xs); font-weight: 600; display: inline-flex; justify-content: flex-end; align-items: center; gap: 2px; }
 .tower__delta [aria-hidden] { font-size: 0.6rem; }
-.tower li:first-child .tower__pos { color: var(--bg); background: var(--text); align-self: stretch; display: grid; place-items: center; }
+.tower__more { overflow: hidden; }
+.tower__more .tower { padding-top: 2px; }
+.tower__toggle {
+  align-self: flex-start;
+  margin-top: var(--sp-3);
+  padding: 0;
+  height: 28px;
+  border: none;
+  background: none;
+  color: var(--text-dim);
+  font-weight: 600;
+  font-size: var(--fs-sm);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.tower__toggle:hover { color: var(--text); }
+.tower:not([start]) li:first-child .tower__pos { color: var(--bg); background: var(--text); align-self: stretch; display: grid; place-items: center; }
 .driver-link { color: inherit; text-decoration: none; font-weight: inherit; }
 .driver-link:hover { text-decoration: underline; text-underline-offset: 3px; }
 .star-btn {

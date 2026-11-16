@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate, useViewTransitionState } from "react-router";
 import { useQuery } from "@tanstack/react-query";
+import { AnimatePresence } from "motion/react";
 import * as m from "motion/react-m";
 import { FaStar, FaRegStar } from "react-icons/fa";
 import {
@@ -9,11 +10,15 @@ import {
   fetchStandingsAfter,
 } from "../api/f1";
 import { teamColour } from "../data/teams";
-import { SPRING, fadeIn } from "../motion";
+import { DUR, EASE_OUT, SPRING, fadeIn } from "../motion";
 import { useAuth } from "./AuthProvider";
 import { useFavorites } from "../hooks/useFavorites";
 import { QueryError, SkeletonRows, State } from "./State";
 import TitleFight from "./TitleFight";
+
+// Rows shown before "Show all". Ten is the points-paying positions, and
+// keeps the panel about as tall as the rail beside it.
+const TOP_ROWS = 10;
 
 const TABS = [
   ["drivers", "Drivers"],
@@ -92,6 +97,7 @@ function DriversTower({ data, setAlert }) {
   const { user, enabled } = useAuth();
   const favorites = useFavorites({ setAlert });
   const navigate = useNavigate();
+  const [expanded, setExpanded] = useState(false);
   const round = Number(data.round);
 
   // One extra request: positions after the previous round, for the ▲▼ column.
@@ -111,6 +117,20 @@ function DriversTower({ data, setAlert }) {
     favorites.toggle(driver.driverId, name);
   };
 
+  const towerClass = `tower ${enabled ? "tower--stars" : ""}`;
+  const rest = data.rows.slice(TOP_ROWS);
+  const renderRow = (row) => (
+    <DriverRow
+      key={row.Driver.driverId}
+      row={row}
+      leaderPts={Number(data.rows[0].points)}
+      before={previous.data?.[row.Driver.driverId]}
+      favorites={favorites}
+      onStar={onStar}
+      showStar={enabled}
+    />
+  );
+
   return (
     <>
       <div className="tower__head" aria-hidden="true">
@@ -122,19 +142,43 @@ function DriversTower({ data, setAlert }) {
         <span>+/−</span>
         {enabled && <span />}
       </div>
-      <ol className={`tower ${enabled ? "tower--stars" : ""}`} aria-label="Driver standings">
-        {data.rows.map((row) => (
-          <DriverRow
-            key={row.Driver.driverId}
-            row={row}
-            leaderPts={Number(data.rows[0].points)}
-            before={previous.data?.[row.Driver.driverId]}
-            favorites={favorites}
-            onStar={onStar}
-            showStar={enabled}
-          />
-        ))}
+      <ol className={towerClass} aria-label="Driver standings">
+        {data.rows.slice(0, TOP_ROWS).map(renderRow)}
       </ol>
+      {rest.length > 0 && (
+        <>
+          {/* The rest opens by height so the page below is pushed, not jumped. */}
+          <AnimatePresence initial={false}>
+            {expanded && (
+              <m.div
+                className="tower__more"
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0, transition: { duration: DUR.base, ease: EASE_OUT } }}
+                transition={{ duration: DUR.slow, ease: EASE_OUT }}
+              >
+                <ol
+                  id="standings-rest"
+                  className={towerClass}
+                  start={TOP_ROWS + 1}
+                  aria-label="Driver standings, continued"
+                >
+                  {rest.map(renderRow)}
+                </ol>
+              </m.div>
+            )}
+          </AnimatePresence>
+          <button
+            type="button"
+            className="tower__toggle"
+            aria-expanded={expanded}
+            aria-controls="standings-rest"
+            onClick={() => setExpanded((v) => !v)}
+          >
+            {expanded ? `Show top ${TOP_ROWS} only` : `Show all ${data.rows.length} drivers`}
+          </button>
+        </>
+      )}
     </>
   );
 }
@@ -233,11 +277,11 @@ const StandingsBox = ({ setAlert }) => {
         </div>
       </header>
 
-      <div className="panel__scroll" id="standings-panel" role="tabpanel" aria-labelledby={`tab-${tab}`} tabIndex={0}>
+      <div id="standings-panel" role="tabpanel" aria-labelledby={`tab-${tab}`}>
         {tab === "fight" ? (
           <TitleFight />
         ) : active.isPending ? (
-          <SkeletonRows rows={10} label="Loading standings" />
+          <SkeletonRows rows={TOP_ROWS} label="Loading standings" />
         ) : active.isError ? (
           <QueryError what="Standings" error={active.error} onRetry={active.refetch} />
         ) : active.data.rows.length === 0 ? (

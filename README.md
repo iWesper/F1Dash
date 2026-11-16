@@ -44,6 +44,8 @@ You can view the live application at [f1dash.vercel.app](https://f1dash.vercel.a
 - **News API:** Retrieve the latest news articles about Formula 1.
 - **YouTube Data API:** Display recent videos from the official Formula 1 channel.
 - **Wikipedia API:** Driver photos on profile and favorites pages.
+- **Circuit layouts:** [bacinger/f1-circuits](https://github.com/bacinger/f1-circuits) (GeoJSON).
+- **Map tiles:** [OpenFreeMap](https://openfreemap.org), OpenStreetMap data.
 
 ## Installation
 

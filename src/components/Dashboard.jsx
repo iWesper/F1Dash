@@ -48,12 +48,19 @@ const Slot = ({ label, children, className = "" }) => (
 );
 
 /**
- * The dashboard leads with whatever matters at this point in the race week:
+ * Two mirrored rows on a 12-column grid:
  *
- *  buildup    next race countdown · map · weather     | standings · last race
- *  weekend    session countdown + schedule · map · weather | standings · last race
- *  result     race result · next race (compact) · map | standings · weather
- *  offseason  champion · last race · map              | standings
+ *   [ lead 4 ][        map 8        ]
+ *   [    standings 8    ][  rail 4  ]
+ *
+ * The lead and the rail change with the race week; the rail stacks its
+ * panels at their natural height so nothing is stretched over empty space.
+ *
+ *  phase      lead                    rail
+ *  buildup    next race + schedule    weather, last race
+ *  weekend    session countdown       weather, last race
+ *  result     race result             next race (compact), weather
+ *  offseason  champion                last race
  *
  * Append ?phase=buildup|weekend|result|offseason to preview a phase.
  */
@@ -66,16 +73,15 @@ const Dashboard = ({ setAlert }) => {
   const last = useQuery({ queryKey: ["lastRace"], queryFn: fetchLastRace });
 
   let top;
-  let side = null;
+  let rail = null;
   if (next.isPending) {
     top = (
       <>
         <span className="visually-hidden" role="status">
           Loading the next race
         </span>
-        <Skeleton height={420} radius={6} />
-        <Skeleton height={420} radius={6} />
-        <Skeleton height={420} radius={6} />
+        <Skeleton height={480} radius={6} />
+        <Skeleton height={480} radius={6} />
       </>
     );
   } else if (next.isError) {
@@ -95,33 +101,33 @@ const Dashboard = ({ setAlert }) => {
           now,
         });
 
+    let lead;
     if (phase === "offseason") {
-      top = (
-        <>
-          <Slot label="the season review"><SeasonReview race={race} /></Slot>
-          <Slot label="the last race"><LastRace lead /></Slot>
-          <Slot label="the map"><CircuitPanel race={race} /></Slot>
-        </>
-      );
+      lead = <Slot label="the season review"><SeasonReview race={race} /></Slot>;
+      rail = <Slot label="the last race"><LastRace /></Slot>;
     } else if (phase === "result") {
-      top = (
+      lead = <Slot label="the race result"><LastRace lead /></Slot>;
+      rail = (
         <>
-          <Slot label="the race result"><LastRace lead /></Slot>
           <Slot label="the next race"><RaceHero race={race} phase={phase} compact /></Slot>
-          <Slot label="the map"><CircuitPanel race={race} /></Slot>
-        </>
-      );
-      side = <Slot label="the weather"><WeatherStrip race={race} now={now} /></Slot>;
-    } else {
-      top = (
-        <>
-          <Slot label="the next race"><RaceHero race={race} phase={phase} /></Slot>
-          <Slot label="the map"><CircuitPanel race={race} /></Slot>
           <Slot label="the weather"><WeatherStrip race={race} now={now} /></Slot>
         </>
       );
-      side = <Slot label="the last race"><LastRace /></Slot>;
+    } else {
+      lead = <Slot label="the next race"><RaceHero race={race} phase={phase} /></Slot>;
+      rail = (
+        <>
+          <Slot label="the weather"><WeatherStrip race={race} now={now} /></Slot>
+          <Slot label="the last race"><LastRace /></Slot>
+        </>
+      );
     }
+    top = (
+      <>
+        {lead}
+        <Slot label="the map"><CircuitPanel race={race} /></Slot>
+      </>
+    );
   }
 
   return (
@@ -130,9 +136,9 @@ const Dashboard = ({ setAlert }) => {
         <SeasonStrip />
       </ErrorBoundary>
       <div className="dash__top">{top}</div>
-      <div className={`dash__mid ${side ? "" : "dash__mid--solo"}`}>
+      <div className={`dash__mid ${rail ? "" : "dash__mid--solo"}`}>
         <Slot label="the standings"><StandingsBox setAlert={setAlert} /></Slot>
-        {side}
+        {rail && <div className="dash__rail">{rail}</div>}
       </div>
       <Slot label="the paddock feed"><Paddock /></Slot>
     </main>
