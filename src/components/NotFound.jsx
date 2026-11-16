@@ -6,7 +6,7 @@ function NotFound() {
   useDocumentTitle("Page not found");
   return (
     <main className="page" id="main">
-      <section className="glass panel state-panel">
+      <section className="panel state-panel">
         <State
           kind="empty"
           icon={FaFlagCheckered}

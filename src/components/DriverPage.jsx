@@ -38,7 +38,7 @@ function DriverPage({ setAlert }) {
   return (
     <main className="page" id="main">
       <nav className="page__crumbs" aria-label="Breadcrumb">
-        <Link to="/" className="crumb">
+        <Link to="/" className="crumb" viewTransition>
           <FaArrowLeftLong aria-hidden="true" /> Standings
         </Link>
       </nav>

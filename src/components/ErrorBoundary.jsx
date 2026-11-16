@@ -41,7 +41,7 @@ class ErrorBoundary extends React.Component {
 
     const { label } = this.props;
     return (
-      <section className="glass panel">
+      <section className="panel">
         <State
           kind="error"
           title={label ? `Couldn't show ${label}` : "Something went wrong"}

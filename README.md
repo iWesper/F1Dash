@@ -24,14 +24,17 @@ You can view the live application at [f1dash.vercel.app](https://f1dash.vercel.a
 - Integrate the latest news related to Formula 1.
 - Present recent videos from the official Formula 1 YouTube channel.
 - User authentication to manage favorite drivers.
-- Circuit layouts drawn as SVG from geoJSON.
+- Live, restyled circuit map that flies in and draws the racing line.
+- Dashboard that follows the race week: build-up, race weekend, result, off-season.
+- Timing-tower standings with places gained or lost, plus a title-fight chart.
+- Search for any driver or race with `/`, and a your-time / track-time switch.
 
 ## Technologies Used
 
 - **Build tool:** Vite
-- **Frontend:** React, React Router, TanStack Query
-- **Styling:** Hand-written CSS (no framework)
-- **Mapping:** geoJSON rendered as SVG
+- **Frontend:** React, React Router, TanStack Query, Motion
+- **Styling:** Hand-written CSS on a token system (see `docs/design-system.md`)
+- **Mapping:** MapLibre GL with OpenFreeMap tiles (no API key), geoJSON circuit layouts
 - **Backend:** Firebase (authentication + Firestore for favorites)
 
 ## APIs Used

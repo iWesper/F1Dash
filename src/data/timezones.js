@@ -1,0 +1,31 @@
+// IANA timezone per Jolpica circuitId. The API only gives UTC times, so
+// "track time" needs this. Circuits missing here simply don't offer the
+// track-time option.
+export const CIRCUIT_TZ = {
+  albert_park: "Australia/Melbourne",
+  shanghai: "Asia/Shanghai",
+  suzuka: "Asia/Tokyo",
+  bahrain: "Asia/Bahrain",
+  jeddah: "Asia/Riyadh",
+  miami: "America/New_York",
+  imola: "Europe/Rome",
+  monaco: "Europe/Monaco",
+  catalunya: "Europe/Madrid",
+  madring: "Europe/Madrid",
+  villeneuve: "America/Toronto",
+  red_bull_ring: "Europe/Vienna",
+  silverstone: "Europe/London",
+  spa: "Europe/Brussels",
+  hungaroring: "Europe/Budapest",
+  zandvoort: "Europe/Amsterdam",
+  monza: "Europe/Rome",
+  baku: "Asia/Baku",
+  sepang: "Asia/Kuala_Lumpur",
+  marina_bay: "Asia/Singapore",
+  americas: "America/Chicago",
+  rodriguez: "America/Mexico_City",
+  interlagos: "America/Sao_Paulo",
+  vegas: "America/Los_Angeles",
+  losail: "Asia/Qatar",
+  yas_marina: "Asia/Dubai",
+};

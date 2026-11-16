@@ -1,165 +1,218 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, useNavigate, useViewTransitionState } from "react-router";
 import { useQuery } from "@tanstack/react-query";
+import * as m from "motion/react-m";
 import { FaStar, FaRegStar } from "react-icons/fa";
-import { fetchConstructorStandings, fetchDriverStandings } from "../api/f1";
-import { Flag, nationalityToCode } from "../utils/flags";
+import {
+  fetchConstructorStandings,
+  fetchDriverStandings,
+  fetchStandingsAfter,
+} from "../api/f1";
+import { teamColour } from "../data/teams";
+import { SPRING, fadeIn } from "../motion";
 import { useAuth } from "./AuthProvider";
 import { useFavorites } from "../hooks/useFavorites";
 import { QueryError, SkeletonRows, State } from "./State";
+import TitleFight from "./TitleFight";
 
-const Pos = ({ pos }) => <span className={`pos ${pos <= 3 ? `pos--${pos}` : ""}`}>{pos}</span>;
+const TABS = [
+  ["drivers", "Drivers"],
+  ["teams", "Teams"],
+  ["fight", "Title fight"],
+];
 
-function DriversTable({ rows, setAlert }) {
+/** Places gained (▲) or lost (▼) since the previous round. */
+function Delta({ now, before }) {
+  if (!before) return <span className="tower__delta" />;
+  const d = before - now;
+  if (d === 0)
+    return (
+      <span className="tower__delta eq">
+        <span aria-hidden="true">–</span>
+        <span className="visually-hidden">no change</span>
+      </span>
+    );
+  return (
+    <span className={`tower__delta mono ${d > 0 ? "up" : "dn"}`}>
+      <span aria-hidden="true">{d > 0 ? "▲" : "▼"}</span>
+      {Math.abs(d)}
+      <span className="visually-hidden">{d > 0 ? " places gained" : " places lost"}</span>
+    </span>
+  );
+}
+
+function DriverRow({ row, leaderPts, before, favorites, onStar, showStar }) {
+  const d = row.Driver;
+  const to = `/driver/${d.driverId}`;
+  // True while navigating to this driver's page: the name then carries a
+  // view-transition-name, so the browser morphs it into the page title.
+  const travelling = useViewTransitionState(to);
+  const name = `${d.givenName} ${d.familyName}`;
+  const pos = Number(row.position) || 0;
+  const gap = leaderPts - Number(row.points);
+  const isFav = favorites.isFavorite(d.driverId);
+  const team = row.Constructors?.[row.Constructors.length - 1];
+
+  return (
+    <m.li layout transition={SPRING} className="tower__row" style={{ "--team": teamColour(team?.constructorId) }}>
+      <span className="tower__pos mono">{pos || row.positionText}</span>
+      <span className="tower__bar" aria-hidden="true" />
+      <span className="tower__name">
+        <Link
+          to={to}
+          viewTransition
+          className="driver-link"
+          style={travelling ? { viewTransitionName: "driver-name" } : undefined}
+        >
+          <span className="hide-sm">{d.givenName} </span>
+          {d.familyName}
+        </Link>
+        <span className="tower__team hide-sm">{team?.name}</span>
+      </span>
+      <span className="tower__pts mono">{row.points}</span>
+      <span className="tower__gap mono hide-sm">{gap > 0 ? `−${gap}` : "Leader"}</span>
+      <Delta now={pos} before={before} />
+      {showStar && (
+        <m.button
+          type="button"
+          whileTap={{ scale: 0.85 }}
+          className={`star-btn ${isFav ? "star-btn--on" : ""}`}
+          aria-pressed={isFav}
+          aria-label={`Favorite ${name}`}
+          onClick={() => onStar(d, name)}
+        >
+          {isFav ? <FaStar aria-hidden="true" /> : <FaRegStar aria-hidden="true" />}
+        </m.button>
+      )}
+    </m.li>
+  );
+}
+
+function DriversTower({ data, setAlert }) {
   const { user, enabled } = useAuth();
   const favorites = useFavorites({ setAlert });
   const navigate = useNavigate();
-  const leaderPts = Number(rows[0]?.points ?? 0);
+  const round = Number(data.round);
 
-  const onStar = (driver) => {
-    const name = `${driver.givenName} ${driver.familyName}`;
+  // One extra request: positions after the previous round, for the ▲▼ column.
+  const previous = useQuery({
+    queryKey: ["standingsAfter", round - 1],
+    queryFn: ({ signal }) => fetchStandingsAfter(round - 1, { signal }),
+    enabled: round > 1,
+    staleTime: Infinity,
+  });
+
+  const onStar = (driver, name) => {
     if (!user) {
       setAlert({ visible: true, message: "Sign in to save favorite drivers", color: "info" });
-      navigate("/login", { state: { from: "/" } });
+      navigate("/login", { state: { from: "/" }, viewTransition: true });
       return;
     }
     favorites.toggle(driver.driverId, name);
   };
 
   return (
-    <table className="dtable">
-      <caption className="visually-hidden">Driver championship standings</caption>
-      <thead>
-        <tr>
-          {enabled && (
-            <th scope="col">
-              <span className="visually-hidden">Favorite</span>
-            </th>
-          )}
-          <th scope="col">Pos</th>
-          <th scope="col">Driver</th>
-          <th scope="col" className="hide-sm">Team</th>
-          <th scope="col" className="num">Pts</th>
-          <th scope="col" className="num hide-sm">Gap</th>
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((row) => {
-          const d = row.Driver;
-          const name = `${d.givenName} ${d.familyName}`;
-          const isFav = favorites.isFavorite(d.driverId);
-          const pos = Number(row.position ?? row.positionText) || 0;
-          const gap = leaderPts - Number(row.points);
-          return (
-            <tr key={d.driverId} className={pos === 1 ? "is-leader" : ""}>
-              {enabled && (
-                <td className="cell-star">
-                  <button
-                    type="button"
-                    className={`star-btn ${isFav ? "star-btn--on" : ""}`}
-                    aria-pressed={isFav}
-                    aria-label={`Favorite ${name}`}
-                    onClick={() => onStar(d)}
-                  >
-                    {isFav ? <FaStar aria-hidden="true" /> : <FaRegStar aria-hidden="true" />}
-                  </button>
-                </td>
-              )}
-              <td>
-                <Pos pos={pos || row.positionText} />
-              </td>
-              <th scope="row" className="strong">
-                <span className="cell-inline">
-                  <Flag code={nationalityToCode[d.nationality]} name={d.nationality} />
-                  <Link className="driver-link" to={`/driver/${d.driverId}`}>
-                    <span className="hide-sm">{d.givenName} </span>
-                    <span className="show-sm">{d.givenName.charAt(0)}. </span>
-                    {d.familyName}
-                  </Link>
-                </span>
-              </th>
-              <td className="hide-sm">{row.Constructors?.[0]?.name}</td>
-              <td className="num">{row.points}</td>
-              <td className="num num--dim hide-sm">{gap > 0 ? `−${gap}` : "—"}</td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
+    <>
+      <div className="tower__head" aria-hidden="true">
+        <span>Pos</span>
+        <span />
+        <span>Driver</span>
+        <span>Pts</span>
+        <span className="hide-sm">Gap</span>
+        <span>+/−</span>
+        {enabled && <span />}
+      </div>
+      <ol className={`tower ${enabled ? "tower--stars" : ""}`} aria-label="Driver standings">
+        {data.rows.map((row) => (
+          <DriverRow
+            key={row.Driver.driverId}
+            row={row}
+            leaderPts={Number(data.rows[0].points)}
+            before={previous.data?.[row.Driver.driverId]}
+            favorites={favorites}
+            onStar={onStar}
+            showStar={enabled}
+          />
+        ))}
+      </ol>
+    </>
   );
 }
 
-function TeamsTable({ rows }) {
+function TeamsTower({ data }) {
+  const leaderPts = Number(data.rows[0].points);
   return (
-    <table className="dtable">
-      <caption className="visually-hidden">Constructor championship standings</caption>
-      <thead>
-        <tr>
-          <th scope="col">Pos</th>
-          <th scope="col">Team</th>
-          <th scope="col" className="num">Wins</th>
-          <th scope="col" className="num">Pts</th>
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((team) => {
-          const pos = Number(team.position) || 0;
+    <>
+      <div className="tower__head tower__head--teams" aria-hidden="true">
+        <span>Pos</span>
+        <span />
+        <span>Team</span>
+        <span>Pts</span>
+        <span className="hide-sm">Gap</span>
+        <span>Wins</span>
+      </div>
+      <ol className="tower tower--teams" aria-label="Constructor standings">
+        {data.rows.map((team) => {
+          const gap = leaderPts - Number(team.points);
           return (
-            <tr key={team.Constructor.constructorId} className={pos === 1 ? "is-leader" : ""}>
-              <td>
-                <Pos pos={pos || team.positionText} />
-              </td>
-              <th scope="row" className="strong">
-                <span className="cell-inline">
-                  <Flag
-                    code={nationalityToCode[team.Constructor.nationality]}
-                    name={team.Constructor.nationality}
-                  />
-                  {team.Constructor.name}
-                </span>
-              </th>
-              <td className="num">{team.wins}</td>
-              <td className="num">{team.points}</td>
-            </tr>
+            <li
+              key={team.Constructor.constructorId}
+              className="tower__row"
+              style={{ "--team": teamColour(team.Constructor.constructorId) }}
+            >
+              <span className="tower__pos mono">{team.position ?? team.positionText}</span>
+              <span className="tower__bar" aria-hidden="true" />
+              <span className="tower__name">{team.Constructor.name}</span>
+              <span className="tower__pts mono">{team.points}</span>
+              <span className="tower__gap mono hide-sm">{gap > 0 ? `−${gap}` : "Leader"}</span>
+              <span className="tower__delta mono">
+                {team.wins}
+                <span className="visually-hidden"> wins</span>
+              </span>
+            </li>
           );
         })}
-      </tbody>
-    </table>
+      </ol>
+    </>
   );
 }
 
 const StandingsBox = ({ setAlert }) => {
   const [tab, setTab] = useState("drivers");
   const drivers = useQuery({ queryKey: ["standings", "drivers"], queryFn: fetchDriverStandings });
-  // Only fetch teams once that tab is opened — saves a request on every visit.
+  // Teams load only once that tab is opened — saves a request on every visit.
   const teams = useQuery({
     queryKey: ["standings", "teams"],
     queryFn: fetchConstructorStandings,
     enabled: tab === "teams",
   });
-
-  const active = tab === "drivers" ? drivers : teams;
   const meta = drivers.data ?? teams.data;
+  const active = tab === "teams" ? teams : drivers;
 
-  const tabs = [
-    ["drivers", "Drivers"],
-    ["teams", "Teams"],
-  ];
+  const onKeyDown = (e) => {
+    const dir = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
+    if (!dir) return;
+    const i = TABS.findIndex(([id]) => id === tab);
+    const next = TABS[(i + dir + TABS.length) % TABS.length][0];
+    setTab(next);
+    document.getElementById(`tab-${next}`)?.focus();
+  };
 
   return (
-    <section className="glass panel" aria-labelledby="standings-title">
-      <div className="panel__head">
+    <section className="panel standings" aria-labelledby="standings-title">
+      <header className="panel__head">
         <div>
-          <span className="eyebrow">
-            Championship {meta?.season ?? ""}
-            {meta?.round ? ` · after round ${meta.round}` : ""}
-          </span>
           <h2 className="panel__title" id="standings-title">
-            Standings
+            Championship
           </h2>
+          {meta && (
+            <p className="panel__meta">
+              {meta.season} · after round {meta.round}
+            </p>
+          )}
         </div>
-        <div className="seg" role="tablist" aria-label="Standings type">
-          {tabs.map(([id, label]) => (
+        <div className="seg" role="tablist" aria-label="Standings view">
+          {TABS.map(([id, label]) => (
             <button
               key={id}
               type="button"
@@ -170,28 +223,20 @@ const StandingsBox = ({ setAlert }) => {
               tabIndex={tab === id ? 0 : -1}
               className={`seg__btn ${tab === id ? "is-active" : ""}`}
               onClick={() => setTab(id)}
-              onKeyDown={(e) => {
-                if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
-                  const next = tab === "drivers" ? "teams" : "drivers";
-                  setTab(next);
-                  document.getElementById(`tab-${next}`)?.focus();
-                }
-              }}
+              onKeyDown={onKeyDown}
             >
-              {label}
+              {/* The pill slides between tabs; the content below swaps instantly. */}
+              {tab === id && <m.span layoutId="standings-pill" className="seg__pill" transition={SPRING} />}
+              <span className="seg__text">{label}</span>
             </button>
           ))}
         </div>
-      </div>
+      </header>
 
-      <div
-        className="panel__scroll"
-        id="standings-panel"
-        role="tabpanel"
-        aria-labelledby={`tab-${tab}`}
-        tabIndex={0}
-      >
-        {active.isPending ? (
+      <div className="panel__scroll" id="standings-panel" role="tabpanel" aria-labelledby={`tab-${tab}`} tabIndex={0}>
+        {tab === "fight" ? (
+          <TitleFight />
+        ) : active.isPending ? (
           <SkeletonRows rows={10} label="Loading standings" />
         ) : active.isError ? (
           <QueryError what="Standings" error={active.error} onRetry={active.refetch} />
@@ -199,10 +244,14 @@ const StandingsBox = ({ setAlert }) => {
           <State kind="empty" title="No standings yet">
             The championship table appears after the first race of the season.
           </State>
-        ) : tab === "drivers" ? (
-          <DriversTable rows={active.data.rows} setAlert={setAlert} />
         ) : (
-          <TeamsTable rows={active.data.rows} />
+          <m.div {...fadeIn}>
+            {tab === "drivers" ? (
+              <DriversTower data={active.data} setAlert={setAlert} />
+            ) : (
+              <TeamsTower data={active.data} />
+            )}
+          </m.div>
         )}
       </div>
     </section>

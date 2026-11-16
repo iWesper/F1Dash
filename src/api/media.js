@@ -8,34 +8,27 @@ export const weatherEnabled = Boolean(WEATHER_KEY);
 
 // ---- Weather (WorldWeatherOnline) ------------------------------------------
 
-const avg = (arr, prop) =>
-  arr.reduce((sum, h) => sum + Number(h[prop]), 0) / arr.length;
-const max = (arr, prop) => Math.max(...arr.map((h) => Number(h[prop])));
-const sum = (arr, prop) => arr.reduce((s, h) => s + Number(h[prop]), 0);
-
 /**
- * Daily summary for a location and date. `past` switches to the historical
- * endpoint. Forecasts only exist ~14 days ahead; the API answers 200 with an
- * error body outside that window, which we surface as NotFoundError.
+ * Hour-by-hour forecast for a location and date. Hours are in the
+ * location's own local time (0–23). Forecasts only exist ~14 days ahead;
+ * outside that window the API answers 200 with an error body, which we
+ * surface as NotFoundError.
  */
-export const fetchWeather = async ({ lat, lng, date, past }, { signal }) => {
+export const fetchHourlyForecast = async ({ lat, lng, date }, { signal }) => {
   if (!WEATHER_KEY) throw new MissingKeyError("Weather");
-  const endpoint = past ? "past-weather.ashx" : "weather.ashx";
-  const data = await getJson(
-    `https://api.worldweatheronline.com/premium/v1/${endpoint}`,
-    { signal, params: { q: `${lat},${lng}`, date, format: "json", key: WEATHER_KEY } }
-  );
+  const data = await getJson("https://api.worldweatheronline.com/premium/v1/weather.ashx", {
+    signal,
+    params: { q: `${lat},${lng}`, date, tp: 1, format: "json", key: WEATHER_KEY },
+  });
   const day = data?.data?.weather?.[0];
-  if (!day?.hourly?.length) throw new NotFoundError("No weather for that date");
-  const hourly = day.hourly;
-  return {
-    date: day.date,
-    tempC: avg(hourly, "tempC"),
-    windKmph: avg(hourly, "windspeedKmph"),
-    rainMm: sum(hourly, "precipMM"),
-    // Forecasts carry a chance of rain; historical data does not.
-    rainChance: hourly[0].chanceofrain !== undefined ? max(hourly, "chanceofrain") : null,
-  };
+  if (!day?.hourly?.length) throw new NotFoundError("No forecast for that date yet");
+  return day.hourly.map((h) => ({
+    hour: Math.round(Number(h.time) / 100),
+    tempC: Number(h.tempC),
+    windKmph: Number(h.windspeedKmph),
+    rainChance: Number(h.chanceofrain ?? 0),
+    rainMm: Number(h.precipMM ?? 0),
+  }));
 };
 
 // ---- News (webz.io News API Lite) ------------------------------------------

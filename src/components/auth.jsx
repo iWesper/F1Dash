@@ -6,6 +6,7 @@ import { useAuth } from "./AuthProvider";
 import { Login, ResetPassword } from "./Login";
 import { SignUp } from "./SignUp";
 import CircuitTrack from "./CircuitTrack";
+import Logo from "./Logo";
 import { State } from "./State";
 import { loadCircuits, circuitLengthKm } from "../utils/circuits";
 import { useDocumentTitle } from "../hooks/useNow";
@@ -42,9 +43,9 @@ function CircuitShowcase() {
 }
 
 const COPY = {
-  signin: { eyebrow: "Welcome back", title: "Sign in to F1 Dash", doc: "Sign in" },
-  signup: { eyebrow: "Create account", title: "Join F1 Dash", doc: "Create account" },
-  reset: { eyebrow: "Reset password", title: "Forgot your password?", doc: "Reset password" },
+  signin: { title: "Sign in", doc: "Sign in" },
+  signup: { title: "Create your account", doc: "Create account" },
+  reset: { title: "Reset your password", doc: "Reset password" },
 };
 
 export const Auth = () => {
@@ -69,12 +70,10 @@ export const Auth = () => {
 
   return (
     <main className="page auth-page" id="main">
-      <section className="glass auth-card">
+      <section className="auth-card">
         <aside className="auth-card__aside">
           <div className="auth-card__brand">
-            <span className="brand__mark" aria-hidden="true">
-              F1
-            </span>
+            <Logo size={40} />
             <p className="auth-card__tagline">
               Countdown, circuit, weather and live standings for every race weekend.
             </p>
@@ -95,7 +94,6 @@ export const Auth = () => {
             </State>
           ) : (
             <>
-              <span className="eyebrow">{COPY[mode].eyebrow}</span>
               <h1 className="auth-card__title" id="auth-title" tabIndex={-1}>
                 {COPY[mode].title}
               </h1>
