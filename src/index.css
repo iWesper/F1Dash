@@ -63,6 +63,9 @@ body,
    behind mobile browser chrome) from the root element, not body. */
 html {
   background: var(--bg);
+  /* Reserve the scrollbar's width on every page so the layout (and the
+     nav) doesn't shift between pages that scroll and pages that don't. */
+  scrollbar-gutter: stable;
 }
 
 body {
@@ -70,7 +73,10 @@ body {
   line-height: 1.5;
   font-family: var(--font-sans);
   color: var(--text);
-  background: var(--bg);
+  /* Must stay transparent: the fixed .aurora layer sits at z-index -1, so an
+     opaque body background hides it for the first viewport-height. The base
+     colour is painted by html instead. */
+  background: transparent;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;

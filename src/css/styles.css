@@ -65,8 +65,16 @@
   display: flex;
   align-items: center;
   gap: 16px;
+  /* Fixed height: the bar must not change size with its contents (e.g. the
+     Sign in button is hidden on /login). */
+  min-height: 64px;
   padding: 10px 16px 10px 20px;
   border-radius: 999px;
+  /* Heavier frost than panels: content scrolls underneath this bar, so it
+     needs a near-opaque tint plus a strong blur to keep labels readable. */
+  background: rgba(10, 12, 20, 0.72);
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
 }
 
 .brand {
