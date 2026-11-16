@@ -6,7 +6,7 @@ non-obvious context and conventions that aren't easy to discover from the code.
 
 ## What this is
 
-A single-page F1 dashboard (React 18 + Vite): next-race info with an SVG
+A single-page F1 dashboard (React 18 + Vite): next-race info with a live
 circuit map, driver/constructor standings, a season race calendar, news,
 videos, and Firebase-backed user auth + favorite drivers. Originally a
 university project; the live site is [f1dash.vercel.app](https://f1dash.vercel.app).
@@ -62,8 +62,17 @@ This is the single most common source of mistakes here.
   shared across panels instead of refetched.
 - **Routing is `react-router` v7** — import from `"react-router"`, not
   `react-router-dom` (v6 had an unpatched open-redirect advisory).
-- **No Bootstrap.** A minimal reset lives in `src/index.css`; component styles
-  in `src/css/styles.css`.
+- **Design system: "Timing screen".** Read `docs/design-system.md` before
+  touching UI. Tokens are in `src/css/tokens.css` and components must use
+  them (no literal colours/radii/easings). No eyebrow labels, no glass, no
+  gradients or glows; numbers are always `.mono`.
+- **Motion** follows the table in `docs/design-system.md`: Motion (`m.*` from
+  `motion/react-m`, constants in `src/motion.js`) for component animation,
+  the View Transitions API for route changes. High-frequency interactions
+  (countdown, search, hover, keyboard) deliberately have none.
+- **Routing uses a data router** (`createBrowserRouter` in `App.jsx`), which
+  is what makes `<Link viewTransition>` work. Add `viewTransition` to
+  internal links. Pages get `setAlert` through `withAlert()`.
 
 ## Architecture
 
@@ -71,17 +80,31 @@ This is the single most common source of mistakes here.
   `React.lazy` + `<Suspense>` for code-splitting; add new routes the same way.
   Routes: `/`, `/login`, `/favorites`, `/calendar`, `/driver/:driverId`, and
   a `*` 404.
-- `src/components/` — pages and panels. The dashboard (`Dashboard.jsx`) composes
-  `NextRaceBox`, `StandingsBox`, `NewsBox`, `VideosBox`.
+- `src/components/` — pages and panels. `Dashboard.jsx` picks a layout from
+  the race-week phase (`racePhase` in `utils/race.js`: buildup, weekend,
+  result, offseason; preview any with `?phase=`). The grid is two mirrored
+  rows (lead 4 | map 8, then standings 8 | rail 4); small panels go in the
+  rail at their natural height rather than being stretched, and nothing
+  scrolls inside a panel. It composes `SeasonStrip`,
+  `RaceHero` / `CircuitPanel` / `WeatherStrip` (`NextRace.jsx`), `LastRace`,
+  `StandingsBox` (timing tower + `TitleFight` chart) and `Paddock`
+  (news/videos). `Search.jsx` is the "/" palette; `Prefs.jsx` holds the
+  your-time / track-time preference.
 - `auth.jsx` exports `Auth` as a **named** export (sign in / sign up / reset
   modes); it's lazy-imported in `App.jsx` via `.then(m => ({ default: m.Auth }))`.
 - `src/config/firebase.js` — Firebase init. Config is hardcoded except the API
   key (from env). Without a key, `firebaseEnabled` is false and `auth` is null
   (getAuth would otherwise throw and blank the app); `AuthProvider` exposes
   `enabled` and `authReady` — gate account UI on those.
-- `src/utils/circuits.js` + `CircuitTrack.jsx` — circuit layouts are drawn as
-  SVG from `src/extra/f1-circuits.geojson`. Circuits are matched by name, then
-  by nearest coordinates (names differ between sources, e.g. Losail/Lusail).
+- `RaceMap.jsx` — MapLibre GL map on OpenFreeMap vector tiles (no API key),
+  repainted in the palette by `restyle()`. Falls back to the SVG drawing
+  (`CircuitTrack.jsx`) if WebGL or the tile server is unavailable.
+- `src/utils/circuits.js` — circuit layouts from
+  `src/extra/f1-circuits.geojson` (a copy of
+  [bacinger/f1-circuits](https://github.com/bacinger/f1-circuits); refresh
+  it from there when a new venue joins the calendar), matched by name, then by nearest
+  coordinates (names differ between sources, e.g. Losail/Lusail).
+- `src/data/` — team colours and circuit timezones (the API only gives UTC).
 - `src/utils/race.js` — session list, local-time formatting, countdown helpers.
 - `src/utils/flags.jsx` — shared `Flag` component + nationality/country → ISO
   code maps (see performance note below).
@@ -92,8 +115,10 @@ This is the single most common source of mistakes here.
   shut-down Ergast API; powers standings, calendar, and historical results.
   Supports CORS directly.
 - **flagcdn.com** — country flag SVGs, loaded on demand by `Flag`.
-- No map tiles: CARTO's free tiles now require an API key, so the map was
-  replaced by an SVG drawing. Don't reintroduce a tile basemap without a key plan.
+- **OpenFreeMap** (`tiles.openfreemap.org`) — keyless vector map tiles.
+  CARTO's free tiles now require an API key; don't switch to a keyed provider.
+- Jolpica allows ~4 requests/second: every call goes through the slot
+  queue in `api/f1.js`. Don't call `getJson` on Jolpica directly.
 - Weather (WorldWeatherOnline — forecasts only exist ~14 days out), News
   (webz.io), YouTube Data API (reads the channel's uploads playlist: 1 quota
   unit vs 100 for search), Wikipedia (driver photos, unkeyed).
@@ -108,6 +133,11 @@ that bundled every flag in the world. Lessons now baked in — please preserve:
 - **Firestore and Analytics are dynamically imported** (`FavoritesService.js`,
   `config/firebase.js`) — only Auth ships in the initial chunk. Keep them lazy.
 - **Keep route components lazy** in `App.jsx`.
+- **MapLibre (~300 KB gzipped plus its worker) is imported inside
+  `RaceMap`** only when the panel scrolls into view. Keep it lazy. Stay on
+  maplibre-gl 6+ (5.x has a critical advisory).
+- **Motion features load through `LazyMotion`** (`src/motion-features.js`);
+  use `m.*`, never the full `motion.*` components.
 
 ## Firebase
 

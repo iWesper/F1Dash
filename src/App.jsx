@@ -1,12 +1,24 @@
 import { useCallback, useEffect, useState, Suspense, lazy } from "react";
-import { BrowserRouter, Route, Routes, useLocation } from "react-router";
+import {
+  createBrowserRouter,
+  Outlet,
+  RouterProvider,
+  ScrollRestoration,
+  useLocation,
+  useOutletContext,
+} from "react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { AnimatePresence, LazyMotion, MotionConfig } from "motion/react";
+import * as m from "motion/react-m";
 import { FaXmark } from "react-icons/fa6";
 import { AuthProvider } from "./components/AuthProvider";
 import HeaderNav from "./components/HeaderNav";
 import ErrorBoundary from "./components/ErrorBoundary";
+import { PrefsProvider } from "./components/Prefs";
+import Search from "./components/Search";
 import { State } from "./components/State";
 import { retryDelay, shouldRetry } from "./api/http";
+import { DUR, EASE_OUT, loadMotionFeatures } from "./motion";
 import "./css/styles.css";
 
 // Route-level code splitting: each page ships as its own chunk so the
@@ -35,7 +47,7 @@ const queryClient = new QueryClient({
 
 const PageLoader = () => (
   <main className="page" id="main">
-    <section className="glass panel state-panel">
+    <section className="panel state-panel">
       <State kind="loading">Loading…</State>
     </section>
   </main>
@@ -48,43 +60,32 @@ const PageLoader = () => (
 function Toast({ alert, onDismiss }) {
   return (
     <div className="toast-region" role="status" aria-live="polite">
-      {alert.visible && (
-        <div className={`toast glass toast--${alert.color}`} key={alert.id}>
-          <span>{alert.message}</span>
-          <button type="button" className="toast__close" onClick={onDismiss} aria-label="Dismiss">
-            <FaXmark aria-hidden="true" />
-          </button>
-        </div>
-      )}
+      <AnimatePresence>
+        {alert.visible && (
+          // Enters from the top edge it lives on and leaves the same way,
+          // a little faster. Keyed by id so a new message replaces the old.
+          <m.div
+            key={alert.id}
+            className={`toast toast--${alert.color}`}
+            initial={{ opacity: 0, y: -12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8, transition: { duration: DUR.fast } }}
+            transition={{ duration: DUR.base, ease: EASE_OUT }}
+          >
+            <span>{alert.message}</span>
+            <button type="button" className="toast__close" onClick={onDismiss} aria-label="Dismiss">
+              <FaXmark aria-hidden="true" />
+            </button>
+          </m.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
 
-function AppRoutes({ setAlert }) {
+/** Layout route: everything that persists across pages. */
+function Shell() {
   const { pathname } = useLocation();
-
-  // New page: start at the top, like a normal navigation.
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, [pathname]);
-
-  return (
-    <ErrorBoundary label="this page" resetKey={pathname}>
-      <Suspense fallback={<PageLoader />}>
-        <Routes>
-          <Route path="/" element={<Dashboard setAlert={setAlert} />} />
-          <Route path="/login" element={<Auth />} />
-          <Route path="/favorites" element={<Favorites setAlert={setAlert} />} />
-          <Route path="/calendar" element={<Calendar />} />
-          <Route path="/driver/:driverId" element={<DriverPage setAlert={setAlert} />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </Suspense>
-    </ErrorBoundary>
-  );
-}
-
-function App() {
   const [alert, setAlertState] = useState({ visible: false, message: "", color: "", id: 0 });
 
   // Each call gets a new id so back-to-back toasts restart the timer.
@@ -99,38 +100,83 @@ function App() {
 
   useEffect(() => {
     if (!alert.visible) return undefined;
-    const timer = setTimeout(
-      () => setAlertState((prev) => ({ ...prev, visible: false })),
-      3500
-    );
+    const timer = setTimeout(() => setAlertState((prev) => ({ ...prev, visible: false })), 3500);
     return () => clearTimeout(timer);
   }, [alert.visible, alert.id]);
 
+  // "/" or Ctrl/⌘+K opens search from anywhere outside a text field.
+  const [searchOpen, setSearchOpen] = useState(false);
+  useEffect(() => {
+    const onKey = (e) => {
+      const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.target.isContentEditable;
+      if ((e.key === "/" && !typing) || (e.key.toLowerCase() === "k" && (e.metaKey || e.ctrlKey))) {
+        e.preventDefault();
+        setSearchOpen(true);
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
+
+  return (
+    <AuthProvider>
+      <a href="#main" className="skip-link">
+        Skip to content
+      </a>
+      <div className="app-shell">
+        <HeaderNav onSearch={() => setSearchOpen(true)} />
+        <Search open={searchOpen} onClose={() => setSearchOpen(false)} />
+        <Toast alert={alert} onDismiss={() => setAlertState((prev) => ({ ...prev, visible: false }))} />
+        <ErrorBoundary label="this page" resetKey={pathname}>
+          <Suspense fallback={<PageLoader />}>
+            {/* Pages get setAlert as a prop via withAlert() below. */}
+            <Outlet context={{ setAlert }} />
+          </Suspense>
+        </ErrorBoundary>
+      </div>
+      {/* New page starts at the top; back/forward restores the old position. */}
+      <ScrollRestoration />
+    </AuthProvider>
+  );
+}
+
+/** Passes the app-wide setAlert callback to a page as a plain prop. */
+const withAlert = (Page) =>
+  function PageWithAlert() {
+    const { setAlert } = useOutletContext();
+    return <Page setAlert={setAlert} />;
+  };
+const DashboardRoute = withAlert(Dashboard);
+const FavoritesRoute = withAlert(Favorites);
+const DriverRoute = withAlert(DriverPage);
+
+// A data router (rather than <BrowserRouter>) is what enables route view
+// transitions: <Link viewTransition> and useViewTransitionState.
+const router = createBrowserRouter([
+  {
+    element: <Shell />,
+    children: [
+      { path: "/", element: <DashboardRoute /> },
+      { path: "/login", element: <Auth /> },
+      { path: "/favorites", element: <FavoritesRoute /> },
+      { path: "/calendar", element: <Calendar /> },
+      { path: "/driver/:driverId", element: <DriverRoute /> },
+      { path: "*", element: <NotFound /> },
+    ],
+  },
+]);
+
+function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <AuthProvider>
-          <a href="#main" className="skip-link">
-            Skip to content
-          </a>
-
-          {/* Dark aurora backdrop (fixed, behind everything) */}
-          <div className="aurora" aria-hidden="true">
-            <span className="aurora__blob aurora__blob--1" />
-            <span className="aurora__blob aurora__blob--2" />
-            <span className="aurora__blob aurora__blob--3" />
-          </div>
-
-          <div className="app-shell">
-            <HeaderNav />
-            <Toast
-              alert={alert}
-              onDismiss={() => setAlertState((prev) => ({ ...prev, visible: false }))}
-            />
-            <AppRoutes setAlert={setAlert} />
-          </div>
-        </AuthProvider>
-      </BrowserRouter>
+      {/* reducedMotion="user": movement is dropped, opacity changes stay. */}
+      <MotionConfig reducedMotion="user">
+        <LazyMotion features={loadMotionFeatures} strict>
+          <PrefsProvider>
+            <RouterProvider router={router} />
+          </PrefsProvider>
+        </LazyMotion>
+      </MotionConfig>
     </QueryClientProvider>
   );
 }

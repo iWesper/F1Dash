@@ -48,19 +48,30 @@ export const getSessions = (race) => {
 export const sessionStatus = (session, now) =>
   now < session.start ? "upcoming" : now < session.end ? "live" : "done";
 
-export const fmtDay = (dt) =>
-  dt.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
+// Every formatter takes an optional IANA timeZone; omitted = viewer's zone.
+export const fmtDay = (dt, timeZone) =>
+  dt.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short", timeZone });
 
-export const fmtDate = (dt) =>
+export const fmtDate = (dt, timeZone) =>
   dt.toLocaleDateString(undefined, {
     weekday: "long",
     day: "numeric",
     month: "long",
-    year: "numeric",
+    timeZone,
   });
 
-export const fmtTime = (dt) =>
-  dt.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+export const fmtTime = (dt, timeZone) =>
+  dt.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", timeZone });
+
+/** Hour of day (0–23) for a date in a given zone. */
+export const hourIn = (dt, timeZone) =>
+  Number(
+    new Intl.DateTimeFormat("en-GB", { hour: "2-digit", hourCycle: "h23", timeZone }).format(dt)
+  );
+
+/** Calendar date (YYYY-MM-DD) for a date in a given zone. */
+export const ymdIn = (dt, timeZone) =>
+  new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit", timeZone }).format(dt);
 
 export const localTimeZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
 
@@ -103,4 +114,22 @@ export const shortName = (driver) =>
 export const splitRaceName = (name) => {
   const m = name.match(/^(.*?)(\s+Grand Prix.*)$/);
   return m ? [m[1], m[2]] : [name, ""];
+};
+
+/**
+ * Where the season is relative to the race week. Drives what the dashboard
+ * leads with.
+ *  "weekend"   from 36h before the first session until the race ends
+ *  "result"    for three days after a race
+ *  "buildup"   any other time with a race still to come
+ *  "offseason" nothing left to run
+ */
+export const racePhase = ({ next, lastStart, now }) => {
+  if (!next) return "offseason";
+  const sessions = getSessions(next);
+  const opens = new Date(sessions[0].start.getTime() - 36 * 3600000);
+  const closes = sessions[sessions.length - 1].end;
+  if (now >= opens && now <= closes) return "weekend";
+  if (lastStart && now - lastStart < 3 * 86400000 + 2 * 3600000) return "result";
+  return "buildup";
 };

@@ -1,4 +1,4 @@
-import { FaStar, FaRegStar } from "react-icons/fa6";
+import { FaRegStar } from "react-icons/fa6";
 import { useAuth } from "./AuthProvider";
 import { useFavorites } from "../hooks/useFavorites";
 import { useDocumentTitle } from "../hooks/useNow";
@@ -9,10 +9,6 @@ const Shell = ({ children, count }) => (
   <main className="page favorites" id="main">
     <div className="page__head">
       <div>
-        <span className="eyebrow">
-          <FaStar className="ico" aria-hidden="true" />
-          Favorites
-        </span>
         <h1 className="page__title">Your drivers</h1>
         {count > 0 && (
           <p className="page__sub">
@@ -25,7 +21,7 @@ const Shell = ({ children, count }) => (
   </main>
 );
 
-const Panel = ({ children }) => <section className="glass panel state-panel">{children}</section>;
+const Panel = ({ children }) => <section className="panel state-panel">{children}</section>;
 
 function Favorites({ setAlert }) {
   useDocumentTitle("Favorites");

@@ -7,6 +7,7 @@ import { fetchWikiImage } from "../api/media";
 import { Flag, nationalityToCode } from "../utils/flags";
 import { QueryError, Skeleton, State } from "./State";
 import { NotFoundError } from "../api/http";
+import { teamColour } from "../data/teams";
 
 // Jolpica positionText codes that mean the car didn't finish.
 const NOT_CLASSIFIED = new Set(["R", "D", "E", "W", "F", "N"]);
@@ -75,7 +76,7 @@ function Portrait({ driver }) {
 
 export function DriverSkeleton() {
   return (
-    <section className="glass panel driver-card" aria-busy="true">
+    <section className="panel driver-card" aria-busy="true">
       <span className="visually-hidden" role="status">
         Loading driver
       </span>
@@ -122,7 +123,7 @@ function Driver({ driverId, headingLevel = 2, favorite, onRemove, linkToProfile 
   if (isPending) return <DriverSkeleton />;
   if (error instanceof NotFoundError) {
     return (
-      <section className="glass panel state-panel">
+      <section className="panel state-panel">
         <State
           kind="empty"
           title="Driver not found"
@@ -135,7 +136,7 @@ function Driver({ driverId, headingLevel = 2, favorite, onRemove, linkToProfile 
   }
   if (isError) {
     return (
-      <section className="glass panel state-panel">
+      <section className="panel state-panel">
         <QueryError what="Driver" error={error} onRetry={refetch} />
       </section>
     );
@@ -156,7 +157,11 @@ function Driver({ driverId, headingLevel = 2, favorite, onRemove, linkToProfile 
   ];
 
   return (
-    <section className="glass panel driver-card" aria-label={name}>
+    <section
+      className="panel driver-card"
+      aria-label={name}
+      style={{ "--team": teamColour(data.races.at(-1)?.Results[0]?.Constructor?.constructorId) }}
+    >
       <div className="driver-card__media">
         <Portrait driver={driver} />
       </div>
@@ -164,9 +169,14 @@ function Driver({ driverId, headingLevel = 2, favorite, onRemove, linkToProfile 
       <div className="driver-card__main">
         <div className="driver-card__top">
           <div>
-            <Heading className="driver-card__name">
+            {/* On the driver page the name is the landing spot for the name
+                that travels from the standings row (view transition). */}
+            <Heading
+              className="driver-card__name"
+              style={headingLevel === 1 ? { viewTransitionName: "driver-name" } : undefined}
+            >
               {linkToProfile ? (
-                <Link to={`/driver/${driver.driverId}`} className="driver-link">
+                <Link to={`/driver/${driver.driverId}`} className="driver-link" viewTransition>
                   {name}
                 </Link>
               ) : (

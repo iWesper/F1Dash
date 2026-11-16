@@ -1,17 +1,13 @@
 import { useRef, useState } from "react";
+import { AnimatePresence } from "motion/react";
+import * as m from "motion/react-m";
 import { useQuery } from "@tanstack/react-query";
 import { FaRegCalendarPlus, FaArrowDown, FaChevronDown, FaTrophy } from "react-icons/fa6";
 import { fetchSchedule, fetchSeasonWinners } from "../api/f1";
 import { Flag, countryToCode } from "../utils/flags";
-import {
-  fmtDay,
-  fmtTime,
-  getSessions,
-  localTimeZone,
-  raceStart,
-  relativeTime,
-  shortName,
-} from "../utils/race";
+import { getSessions, raceStart, relativeTime, shortName } from "../utils/race";
+import { DUR, EASE_OUT } from "../motion";
+import { TimeToggle, useRaceTime } from "./Prefs";
 import { useDocumentTitle } from "../hooks/useNow";
 import { QueryError, Skeleton, State } from "./State";
 
@@ -61,12 +57,13 @@ const downloadIcs = (race) => {
 function RaceCard({ race, winner, winnersLoading, isNext, isPast, cardRef, now }) {
   const start = raceStart(race);
   const { Location } = race.Circuit;
+  const t = useRaceTime(race.Circuit.circuitId);
 
   return (
     <li
       ref={cardRef}
       tabIndex={isNext ? -1 : undefined}
-      className={`glass race-card ${isNext ? "race-card--next" : ""} ${
+      className={`race-card ${isNext ? "race-card--next" : ""} ${
         isPast ? "race-card--past" : ""
       }`}
       aria-current={isNext ? "date" : undefined}
@@ -80,7 +77,7 @@ function RaceCard({ race, winner, winnersLoading, isNext, isPast, cardRef, now }
         <div className="race-card__heading">
           <Flag code={countryToCode[Location.country]} name={Location.country} />
           <h2 className="race-card__name">{race.raceName}</h2>
-          {isNext && <span className="badge badge--next">Next · {relativeTime(start, now)}</span>}
+          {isNext && <span className="tag tag--now">Next · {relativeTime(start, now)}</span>}
         </div>
         <p className="race-card__circuit">
           {race.Circuit.circuitName} · {Location.locality}, {Location.country}
@@ -89,7 +86,7 @@ function RaceCard({ race, winner, winnersLoading, isNext, isPast, cardRef, now }
         {/* Past rounds stay compact: just the race date. */}
         {isPast ? (
           <p className="race-card__date">
-            {fmtDay(start)} {start.getFullYear()}
+            {t.day(start)} {start.getFullYear()}
           </p>
         ) : (
           <ul className="race-card__sessions">
@@ -97,7 +94,7 @@ function RaceCard({ race, winner, winnersLoading, isNext, isPast, cardRef, now }
               <li className={`sess ${s.isRace ? "sess--race" : ""}`} key={s.key}>
                 <span className="sess__label">{s.label}</span>
                 <span className="sess__time">
-                  {fmtDay(s.start)} · {s.hasTime ? fmtTime(s.start) : "TBC"}
+                  {t.day(s.start)} <b>{s.hasTime ? t.time(s.start) : "TBC"}</b>
                 </span>
               </li>
             ))}
@@ -141,6 +138,7 @@ function Calendar() {
   const winners = useQuery({ queryKey: ["seasonWinners"], queryFn: fetchSeasonWinners });
   const [showPast, setShowPast] = useState(false);
   const nextRef = useRef(null);
+  const { mode } = useRaceTime("silverstone"); // any circuit with a known zone
   const now = new Date();
 
   const races = schedule.data ?? [];
@@ -181,17 +179,17 @@ function Calendar() {
     <main className="page calendar" id="main">
       <div className="page__head">
         <div>
-          <span className="eyebrow">Season {year}</span>
-          <h1 className="page__title">Race calendar</h1>
+          <h1 className="page__title">{year} race calendar</h1>
           <p className="page__sub">
             {races.length > 0 && (
               <>
                 {races.length} rounds · {past.length} complete ·{" "}
               </>
             )}
-            Times in your timezone ({localTimeZone()})
+            {mode === "track" ? "Times at each track" : "Times in your timezone"}
           </p>
         </div>
+        <TimeToggle circuitId="silverstone" />
         {next && showPast && (
           <button type="button" className="btn" onClick={jumpToNext}>
             <FaArrowDown aria-hidden="true" /> Jump to next race
@@ -203,16 +201,16 @@ function Calendar() {
         <ul className="cal-list" role="status" aria-label="Loading the calendar">
           {Array.from({ length: 4 }, (_, i) => (
             <li key={i} aria-hidden="true">
-              <Skeleton height={132} radius={24} />
+              <Skeleton height={132} radius={6} />
             </li>
           ))}
         </ul>
       ) : schedule.isError ? (
-        <section className="glass panel state-panel">
+        <section className="panel state-panel">
           <QueryError what="The calendar" error={schedule.error} onRetry={schedule.refetch} />
         </section>
       ) : races.length === 0 ? (
-        <section className="glass panel state-panel">
+        <section className="panel state-panel">
           <State kind="empty" title="No calendar yet">
             The schedule for {year} hasn't been published.
           </State>
@@ -233,16 +231,27 @@ function Calendar() {
             </button>
           )}
 
-          {showPast && (
-            <ul className="cal-list cal-list--past" id="past-races">
-              {past.map(card)}
-            </ul>
-          )}
+          {/* Height opens so the upcoming rounds are pushed down, not jumped. */}
+          <AnimatePresence initial={false}>
+            {showPast && (
+              <m.div
+                className="cal-past"
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0, transition: { duration: DUR.base, ease: EASE_OUT } }}
+                transition={{ duration: DUR.slow, ease: EASE_OUT }}
+              >
+                <ul className="cal-list cal-list--past" id="past-races">
+                  {past.map(card)}
+                </ul>
+              </m.div>
+            )}
+          </AnimatePresence>
 
           {upcoming.length > 0 ? (
             <ul className="cal-list">{upcoming.map(card)}</ul>
           ) : (
-            <section className="glass panel state-panel">
+            <section className="panel state-panel">
               <State kind="empty" icon={FaTrophy} title="That's a wrap">
                 Every round of {year} has been run. See you next season.
               </State>
